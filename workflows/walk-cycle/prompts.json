@@ -1,0 +1,16 @@
+{
+  "template": "WALK_I2V",
+  "note": "Same ComfyUI graph for all characters. Swap gender slots only — do not train a second model.",
+  "slots": {
+    "female": {
+      "BODY": "The character is an adult woman. Keep a feminine silhouette. Clothing stays fully on.",
+      "HAIR": "- long hair secondary motion: delayed sway one-eighth cycle after the head bob, tips jitter on each step, roots stay attached to the scalp",
+      "CHEST": "- subtle chest bounce on each foot plant, delayed, small amplitude, follows the torso, no exaggeration"
+    },
+    "male": {
+      "BODY": "The character is an adult man. Keep a masculine silhouette.",
+      "HAIR": "- hair and any cloak stay mostly with the skull; only light sway if the hair is long; no wild flutter",
+      "CHEST": "- firm torso; no chest bounce"
+    }
+  }
+}

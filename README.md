@@ -2,11 +2,9 @@
 
 以后都在这个工程里跑。暗黑 2 装备底子 + 手游关卡梯度。立绘和走路帧放 `public/sprites`。
 
-走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。在 Cursor Agents 网页里把 `0.png`、`1.png`、`2.png`… 拖进对话输入框（带 + 和 Send 的那一行）即可，我会写进这个目录。接口 `GET /api/sprites?clip=mage/walk` 按数字排序后循环播放。
+走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。这些还是同一姿势的试色，没有摆臂和换脚。步态工作流在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)：用 OpenPose 锁手脚，再走 [mor-o 的 ComfyUI 管线](https://github.com/mor-o/comfyui-2d-character-pipeline)（Qwen-Image-Edit → WAN 2.2 图生视频 → 抽帧）。工坊左侧「法师走路」分女/男管线：同一套 WAN 图生视频，只换 `BODY` / `HAIR` / `CHEST` 提示词。女角色默认长发滞后抖动，部分角色再加落脚延迟的胸腔回弹；男角色提示词写成躯干稳住。槽位见 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 
-继续加帧时文件名保持纯数字：`8.png`、`9.png`。同一动作的其它片段用同规则，例如 `public/sprites/mage/idle/`、`public/sprites/mage/attack/`。
-
-目前这 8 张是同一走路姿态的试色（底不同），还不是连续步态。真正走路循环需要同一透明底、姿态依次变化的帧。
+抽好的循环帧用纯数字文件名拖进对话输入框，放到 `public/sprites/mage/walk-cycle/`。
 
 ## 掉落（暗黑 2）
 

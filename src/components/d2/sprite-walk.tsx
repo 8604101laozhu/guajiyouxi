@@ -50,16 +50,6 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
 
   const current = clipFrames[Math.min(frame, Math.max(0, clipFrames.length - 1))];
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const node = document.getElementById("mage-walk");
-    if (!node) return;
-    if (window.location.hash !== "#mage-walk") {
-      window.history.replaceState(null, "", "#mage-walk");
-    }
-    node.scrollIntoView({ block: "start", behavior: "smooth" });
-  }, [index?.frames.length]);
-
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs tracking-[0.2em] text-[#c7a24a]">法师走路</p>
@@ -111,7 +101,7 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
       ) : null}
       <p className="text-[11px] text-[#8a7a5a]">
         {index?.frames.length
-          ? `${index.frames.length} 帧 · 当前 ${frame + 1}/${clipFrames.length} · 目前是同姿态试色，不是步态循环`
+          ? `${index.frames.length} 帧 · 当前 ${frame + 1}/${clipFrames.length} · 这些是同姿态试色，不是步态`
           : "等待关键帧"}
       </p>
       <div className="flex flex-wrap gap-2">

@@ -36,7 +36,7 @@ import { DamageStudio } from "./damage-studio";
 import { qualityTint } from "./item-tooltip";
 import { ItemTooltip } from "./item-tooltip";
 import { PaperDoll } from "./paper-doll";
-import { SpriteWalkPreview } from "./sprite-walk";
+import { MageWalkStudio } from "./walk-guide";
 
 const STORAGE_KEY = "guajiyouxi-v1";
 
@@ -358,7 +358,7 @@ export function GameClient() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <section id="mage-walk" className="border border-[#6a5428] bg-[#120e0a] p-4">
-          <SpriteWalkPreview />
+          <MageWalkStudio />
         </section>
         <CampaignBench
           character={character}
