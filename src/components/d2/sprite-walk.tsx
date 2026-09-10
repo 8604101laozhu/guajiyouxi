@@ -72,11 +72,9 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
           />
         ) : (
           <p className="max-w-[16rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">
-            还没有帧。把本机
+            还没有帧。把 0.png、1.png…
             <br />
-            `法师/sprites/walk` 里纯数字 png
-            <br />
-            拷到 `public/sprites/mage/walk/`
+            拖进这条对话的输入框（+ / Send）
           </p>
         )}
       </div>

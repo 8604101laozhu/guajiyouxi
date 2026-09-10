@@ -1,5 +1,5 @@
 export function numericFrameName(file: string): number | null {
-  const match = file.match(/^(\d+)\.(png|webp|gif)$/i);
+  const match = file.match(/^(\d+)\.(png|webp|gif|jpe?g)$/i);
   if (!match) return null;
   return Number(match[1]);
 }

@@ -23,5 +23,6 @@ describe("numeric sprite clips", () => {
   it("parses zero-padded names", () => {
     expect(numericFrameName("00.png")).toBe(0);
     expect(numericFrameName("07.webp")).toBe(7);
+    expect(numericFrameName("2.jpg")).toBe(2);
   });
 });

@@ -2,7 +2,7 @@
 
 以后都在这个工程里跑。暗黑 2 装备底子 + 手游关卡梯度。立绘和走路帧放 `public/sprites`。
 
-走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。接口 `GET /api/sprites?clip=mage/walk` 按数字排序后循环播放。
+走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。在 Cursor Agents 网页里把 `0.png`、`1.png`、`2.png`… 拖进对话输入框（带 + 和 Send 的那一行）即可，我会写进这个目录。接口 `GET /api/sprites?clip=mage/walk` 按数字排序后循环播放。
 
 继续加帧时文件名保持纯数字：`8.png`、`9.png`。同一动作的其它片段用同规则，例如 `public/sprites/mage/idle/`、`public/sprites/mage/attack/`。
 
