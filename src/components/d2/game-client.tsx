@@ -6,11 +6,14 @@ import {
   BASES,
   characterAttackRating,
   createCharacter,
+  combatPower,
   defaultSlotForKind,
   equipItem,
+  farmStage,
   generateForSlot,
   generateItem,
   getBase,
+  getStage,
   ITEM_KINDS,
   mulberry32,
   QUALITY_NAME,
@@ -18,6 +21,8 @@ import {
   totalAttributes,
   unequip,
   type Character,
+  type DifficultyId,
+  type FarmResult,
   type HitRoll,
   type Item,
   type ItemKind,
@@ -26,12 +31,13 @@ import {
 } from "@/lib/d2";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { CampaignBench } from "./campaign-bench";
 import { DamageStudio } from "./damage-studio";
 import { qualityTint } from "./item-tooltip";
 import { ItemTooltip } from "./item-tooltip";
 import { PaperDoll } from "./paper-doll";
 
-const STORAGE_KEY = "hanger-forge-v1";
+const STORAGE_KEY = "hanger-forge-v2";
 
 type Persist = {
   character: Character;
@@ -41,6 +47,10 @@ type Persist = {
   dummyDefense: number;
   dummyLevel: number;
   showRange: boolean;
+  chapter: number;
+  stage: number;
+  difficulty: DifficultyId;
+  gold: number;
 };
 
 function loadState(): Persist | null {
@@ -75,6 +85,12 @@ export function GameClient() {
   const [dummyDefense, setDummyDefense] = useState(200);
   const [dummyLevel, setDummyLevel] = useState(30);
   const [showRange, setShowRange] = useState(true);
+  const [chapter, setChapter] = useState(1);
+  const [stage, setStage] = useState(1);
+  const [difficulty, setDifficulty] = useState<DifficultyId>("normal");
+  const [gold, setGold] = useState(0);
+  const [lastFarm, setLastFarm] = useState<FarmResult | null>(null);
+  const [labOpen, setLabOpen] = useState(false);
   const [quality, setQuality] = useState<Quality | "random">("random");
   const [kind, setKind] = useState<ItemKind | "random">("random");
   const [count, setCount] = useState(10);
@@ -95,6 +111,10 @@ export function GameClient() {
       setDummyDefense(saved.dummyDefense);
       setDummyLevel(saved.dummyLevel);
       setShowRange(saved.showRange);
+      if (saved.chapter) setChapter(saved.chapter);
+      if (saved.stage) setStage(saved.stage);
+      if (saved.difficulty) setDifficulty(saved.difficulty);
+      if (typeof saved.gold === "number") setGold(saved.gold);
     }
     setHydrated(true);
     /* eslint-enable react-hooks/set-state-in-effect */
@@ -110,9 +130,13 @@ export function GameClient() {
       dummyDefense,
       dummyLevel,
       showRange,
+      chapter,
+      stage,
+      difficulty,
+      gold,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  }, [character, inventory, areaLevel, magicFind, dummyDefense, dummyLevel, showRange, hydrated]);
+  }, [character, inventory, areaLevel, magicFind, dummyDefense, dummyLevel, showRange, chapter, stage, difficulty, gold, hydrated]);
 
   const selected = useMemo(() => {
     if (!selectedId) return null;
@@ -144,14 +168,18 @@ export function GameClient() {
 
   function generateLoot() {
     const { seed } = nextRng();
+    const monster = getStage(chapter, stage, difficulty);
     const items: Item[] = [];
     for (let i = 0; i < count; i++) {
       const itemRng = mulberry32((seed + i * 9973) >>> 0);
       items.push(
         generateItem({
           rng: itemRng,
-          ilvl: areaLevel,
+          ilvl: monster.tcLevel,
+          mlvl: monster.mlvl,
           magicFind: totalMf,
+          uber: monster.uber,
+          jewelryChance: monster.jewelryChance,
           kind: kind === "random" ? undefined : kind,
           quality: quality === "random" ? undefined : quality,
           seed: (seed + i) >>> 0,
@@ -159,6 +187,82 @@ export function GameClient() {
       );
     }
     dropItems(items);
+  }
+
+  function selectStage(nextChapter: number, nextStage: number, nextDiff: DifficultyId) {
+    setChapter(nextChapter);
+    setStage(nextStage);
+    setDifficulty(nextDiff);
+    const monster = getStage(nextChapter, nextStage, nextDiff);
+    setDummyDefense(monster.defense);
+    setDummyLevel(monster.mlvl);
+    setAreaLevel(monster.tcLevel);
+  }
+
+  function applyFarm(result: FarmResult, summary?: string) {
+    setLastFarm(result);
+    setDummyDefense(result.monster.defense);
+    setDummyLevel(result.monster.mlvl);
+    if (!result.ok) {
+      flash(result.reason);
+      return;
+    }
+    setGold((value) => value + result.gold);
+    if (result.items.length) {
+      setInventory((prev) => [...result.items, ...prev].slice(0, 80));
+      setSelectedId(result.items[0]?.id ?? selectedId);
+    }
+    flash(summary ?? `${result.reason} · 金币 +${result.gold} · 装备 ${result.items.length} · 空箱 ${result.noDrops}/${result.picks}`);
+  }
+
+  function runFarm() {
+    const { rng, seed } = nextRng();
+    applyFarm(
+      farmStage({
+        rng,
+        seed,
+        chapter,
+        stage,
+        difficulty,
+        magicFind: totalMf,
+        power: combatPower(character),
+      }),
+    );
+  }
+
+  function runFarmMany() {
+    const { seed } = nextRng();
+    const bag: Item[] = [];
+    let goldGain = 0;
+    let noDrops = 0;
+    let picks = 0;
+    let last: FarmResult | null = null;
+    let waves = 0;
+    for (let i = 0; i < 10; i++) {
+      const result = farmStage({
+        rng: mulberry32((seed + i * 7919) >>> 0),
+        seed: seed + i,
+        chapter,
+        stage,
+        difficulty,
+        magicFind: totalMf,
+        power: combatPower(character),
+      });
+      last = result;
+      if (!result.ok) break;
+      waves += 1;
+      goldGain += result.gold;
+      noDrops += result.noDrops;
+      picks += result.picks;
+      bag.push(...result.items);
+    }
+    if (!last) return;
+    applyFarm(
+      { ...last, gold: goldGain, items: bag, noDrops, picks },
+      last.ok
+        ? `挂机 ${waves} 波 · 金币 +${goldGain} · 装备 ${bag.length} · 空箱 ${noDrops}/${picks}`
+        : last.reason,
+    );
   }
 
   function generateWhites() {
@@ -245,76 +349,82 @@ export function GameClient() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-2 border-b border-[#6a5428] pb-4">
         <p className="text-xs tracking-[0.35em] text-[#c7a24a]">HANGER · 装备工坊</p>
-        <h1 className="text-2xl font-semibold text-[#f0ead8] sm:text-3xl">暗黑 2 部位、命名、伤害掷骰</h1>
+        <h1 className="text-2xl font-semibold text-[#f0ead8] sm:text-3xl">暗黑 2 掉落 · 手游关卡梯度</h1>
         <p className="max-w-3xl text-sm leading-6 text-[#cfc3a6]">
-          人物立绘和场景先空着，等你练丹。现在这一层只负责：十个穿着部位、魔法/稀有/暗金命名、词缀掷骰，以及每次攻击在最小–最大之间重新随机。
+          单件怎么出还是暗黑 2：TC 抽基底，ItemRatio 走暗金→套装→稀有→魔法。关卡血量、推荐战力、抽次和空箱按现在挂机手游的章节难度抬。立绘先空着。
         </p>
       </header>
 
-      <section className="grid gap-3 border border-[#6a5428] bg-[#140f0a] p-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label={`地区等级 ${areaLevel}`}>
-          <Slider value={[areaLevel]} min={1} max={99} onValueChange={(v) => setAreaLevel(sliderNumber(v))} />
-        </Field>
-        <Field label={`额外 MF ${magicFind}%（装备 ${gearMf}%）`}>
-          <Slider value={[magicFind]} min={0} max={400} onValueChange={(v) => setMagicFind(sliderNumber(v))} />
-        </Field>
-        <Field label={`木桩防御 ${dummyDefense}`}>
-          <Slider value={[dummyDefense]} min={0} max={2000} onValueChange={(v) => setDummyDefense(sliderNumber(v))} />
-        </Field>
-        <Field label={`木桩等级 ${dummyLevel}`}>
-          <Slider value={[dummyLevel]} min={1} max={99} onValueChange={(v) => setDummyLevel(sliderNumber(v))} />
-        </Field>
-      </section>
+      <CampaignBench
+        character={character}
+        gearMf={gearMf}
+        extraMf={magicFind}
+        onExtraMf={setMagicFind}
+        chapter={chapter}
+        stage={stage}
+        difficulty={difficulty}
+        gold={gold}
+        lastFarm={lastFarm}
+        onChapter={(n) => selectStage(n, stage, difficulty)}
+        onStage={(n) => selectStage(chapter, n, difficulty)}
+        onDifficulty={(d) => selectStage(chapter, stage, d)}
+        onFarm={runFarm}
+        onFarmMany={runFarmMany}
+      />
 
       <section className="flex flex-col gap-3 border border-[#6a5428] bg-[#140f0a] p-4">
-        <p className="text-xs tracking-[0.2em] text-[#c7a24a]">掉落台</p>
-        <div className="flex flex-wrap gap-2">
-          <Select
-            value={quality}
-            onChange={(value) => setQuality(value as Quality | "random")}
-            options={[
-              ["random", "品质：按 MF 掷"],
-              ["normal", "强制普通"],
-              ["magic", "强制魔法"],
-              ["rare", "强制稀有"],
-              ["unique", "强制暗金"],
-            ]}
-          />
-          <Select
-            value={kind}
-            onChange={(value) => setKind(value as ItemKind | "random")}
-            options={[["random", "部位：随机"], ...ITEM_KINDS.map((id) => [id, KIND_LABEL[id]] as const)]}
-          />
-          <Select
-            value={String(count)}
-            onChange={(value) => setCount(Number(value))}
-            options={[
-              ["1", "掉 1 件"],
-              ["10", "掉 10 件"],
-              ["40", "掉 40 件"],
-            ]}
-          />
-          <Button type="button" onClick={generateLoot}>
-            生成战利品
-          </Button>
-          <Button type="button" variant="outline" onClick={generateWhites}>
-            生成白板十件套
-          </Button>
-          <Button type="button" variant="ghost" onClick={() => setShowRange((v) => !v)}>
-            {showRange ? "隐藏掷骰范围" : "显示掷骰范围"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              setInventory([]);
-              setHits([]);
-              flash("背包已清空");
-            }}
-          >
-            清空背包
-          </Button>
-        </div>
+        <button type="button" className="text-left text-xs tracking-[0.2em] text-[#c7a24a]" onClick={() => setLabOpen((v) => !v)}>
+          {labOpen ? "收起实验室" : "实验室（强制品质 / 白板套）"}
+        </button>
+        {labOpen ? (
+          <div className="flex flex-wrap gap-2">
+            <Select
+              value={quality}
+              onChange={(value) => setQuality(value as Quality | "random")}
+              options={[
+                ["random", "品质：按 ItemRatio 掷"],
+                ["normal", "强制普通"],
+                ["magic", "强制魔法"],
+                ["rare", "强制稀有"],
+                ["unique", "强制暗金"],
+              ]}
+            />
+            <Select
+              value={kind}
+              onChange={(value) => setKind(value as ItemKind | "random")}
+              options={[["random", "部位：随机"], ...ITEM_KINDS.map((id) => [id, KIND_LABEL[id]] as const)]}
+            />
+            <Select
+              value={String(count)}
+              onChange={(value) => setCount(Number(value))}
+              options={[
+                ["1", "掉 1 件"],
+                ["10", "掉 10 件"],
+                ["40", "掉 40 件"],
+              ]}
+            />
+            <Button type="button" onClick={generateLoot}>
+              按当前关卡 TC 生成
+            </Button>
+            <Button type="button" variant="outline" onClick={generateWhites}>
+              生成白板十件套
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => setShowRange((v) => !v)}>
+              {showRange ? "隐藏掷骰范围" : "显示掷骰范围"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setInventory([]);
+                setHits([]);
+                flash("背包已清空");
+              }}
+            >
+              清空背包
+            </Button>
+          </div>
+        ) : null}
         {notice ? <p className="text-sm text-[#c7a24a]">{notice}</p> : null}
       </section>
 
@@ -346,7 +456,7 @@ export function GameClient() {
             {!hydrated ? <p className="text-xs text-[#8a7a5a]">读取本地存档…</p> : null}
           </div>
           {inventory.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[#8a7a5a]">还没有掉落。调地区等级后生成战利品，或先穿一套白板。</p>
+            <p className="py-10 text-center text-sm text-[#8a7a5a]">还没有掉落。先清剿一关，或打开实验室强制出货。</p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {inventory.map((item) => (
@@ -433,13 +543,13 @@ export function GameClient() {
       <section className="border border-[#6a5428] bg-[#140f0a] p-4 text-sm leading-6 text-[#cfc3a6]">
         <p className="text-xs tracking-[0.2em] text-[#c7a24a]">公式底子</p>
         <ol className="mt-2 list-decimal space-y-1 pl-5">
+          <li>掉落先抽 TC 基底（qlvl 带宽随关卡走），再按 ItemRatio 判定品质。</li>
+          <li>品质链：暗金 → 套装（空表则继续）→ 稀有 → 魔法 → 白板。MF 暗金 250 衰减、稀有 600，魔法不衰减。</li>
+          <li>普通/精英/噩梦/地狱改变血量、推荐战力、抽次、空箱率和是否走 Uber 品质行。</li>
           <li>武器基底伤害；无形 ×1.5。</li>
           <li>只乘武器上的 %增强伤害，再加上武器上的 +最小 / +最大。</li>
           <li>装外 %增强伤害与力量（近战）或敏捷（弓弩标枪）加算后乘上去。</li>
-          <li>戒指、护甲等部位的 +伤害在这一步之后加，不再吃武器 ED。</li>
-          <li>火/冰/电/毒各自掷骰，不吃 ED。</li>
-          <li>致命一击先判定，未触发再判定死伤，物理 ×2，两者不叠加。</li>
-          <li>命中率 = clamp(200 × AR/(AR+防御) × 等级比, 5, 95)。</li>
+          <li>火/冰/电/毒各自掷骰。致命一击与死伤不叠加。</li>
         </ol>
         <p className="mt-3 text-[12px] text-[#8a7a5a]">
           基底种类 {BASES.length} ，词缀会按物品等级和组别互斥。暗金目前是对照表，基底没有暗金时会掉成稀有。镶孔只有数量，宝石和符文之语还没接。

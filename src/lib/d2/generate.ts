@@ -1,69 +1,28 @@
 import { affixesFor } from "./affixes";
-import { BASES, getBase, isArmorLike } from "./bases";
+import { getBase, isArmorLike } from "./bases";
 import { magicName, rareName } from "./naming";
+import { rollItemQuality } from "./quality";
 import { chance, makeId, randInt, type Rng, weightedPick } from "./rng";
 import { kindMatchesSlot, type SlotId } from "./slots";
-import type {
-  AffixDef,
-  AffixKind,
-  Item,
-  ItemBase,
-  ItemKind,
-  Quality,
-  RolledAffix,
-} from "./types";
+import { hasUniqueFor, pickTreasureBase } from "./treasure";
+import type { AffixDef, AffixKind, Item, ItemBase, ItemKind, Quality, RolledAffix } from "./types";
 import { UNIQUES, uniquesForBase } from "./uniques";
 
 export type GenerateOptions = {
   rng: Rng;
   ilvl: number;
+  mlvl?: number;
   magicFind?: number;
   kind?: ItemKind;
   slot?: SlotId;
   quality?: Quality;
   baseId?: string;
   identified?: boolean;
+  uber?: boolean;
+  jewelryChance?: number;
+  tcBias?: number;
   seed: number;
 };
-
-function effectiveMf(mf: number, diminishing: number): number {
-  if (mf <= 0) return 0;
-  return (mf * diminishing) / (mf + diminishing);
-}
-
-/**
- * D2-style diminishing MF, then a workshop-friendly quality table.
- * Unique that cannot spawn on the chosen base falls through to rare.
- */
-export function rollQuality(rng: Rng, mf: number): Quality {
-  const uniqueMf = effectiveMf(mf, 250);
-  const rareMf = effectiveMf(mf, 500);
-  const uniqueChance = 2 * ((100 + uniqueMf) / 100);
-  const rareChance = 12 * ((100 + rareMf) / 100);
-  const magicChance = 50;
-  const roll = rng() * 100;
-  if (roll < uniqueChance) return "unique";
-  if (roll < uniqueChance + rareChance) return "rare";
-  if (roll < uniqueChance + rareChance + magicChance) return "magic";
-  return "normal";
-}
-
-function pickBase(rng: Rng, ilvl: number, kind?: ItemKind, baseId?: string): ItemBase {
-  if (baseId) return getBase(baseId);
-  const pool = BASES.filter((base) => {
-    if (base.qlvl > ilvl) return false;
-    if (kind && base.kind !== kind) return false;
-    return true;
-  });
-  if (pool.length === 0) {
-    const fallback = BASES.filter((base) => !kind || base.kind === kind);
-    return weightedPick(rng, fallback, (base) => Math.max(1, 40 - base.qlvl));
-  }
-  return weightedPick(rng, pool, (base) => {
-    const distance = Math.abs(ilvl - base.qlvl);
-    return Math.max(1, 24 - distance);
-  });
-}
 
 function rollMods(def: AffixDef, rng: Rng): RolledAffix {
   return {
@@ -166,9 +125,25 @@ function rollEthereal(rng: Rng, base: ItemBase, quality: Quality): boolean {
 export function generateItem(options: GenerateOptions): Item {
   const { rng, seed } = options;
   const ilvl = Math.max(1, Math.min(99, Math.floor(options.ilvl)));
+  const mlvl = Math.max(1, Math.min(99, Math.floor(options.mlvl ?? ilvl)));
   const kind = options.kind ?? (options.slot ? kindFromSlot(options.slot) : undefined);
-  const base = pickBase(rng, ilvl, kind, options.baseId);
-  let quality = options.quality ?? rollQuality(rng, options.magicFind ?? 0);
+  const base = pickTreasureBase({
+    rng,
+    ilvl,
+    kind,
+    baseId: options.baseId,
+    jewelryChance: options.jewelryChance,
+    tcBias: options.tcBias,
+  });
+  const uniqueAvailable = hasUniqueFor(base.id, ilvl);
+  let quality = options.quality;
+  if (!quality) {
+    quality = rollItemQuality(
+      rng,
+      { mlvl, qlvl: base.qlvl, magicFind: options.magicFind ?? 0, uber: options.uber },
+      uniqueAvailable,
+    ).quality;
+  }
   const ethereal = rollEthereal(rng, base, quality);
   let affixes: RolledAffix[] = [];
   let name = base.name;

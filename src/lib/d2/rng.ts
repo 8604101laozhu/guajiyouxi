@@ -17,6 +17,12 @@ export function randInt(rng: Rng, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1));
 }
 
+/** D2 `rand(n)`: integer in [0, n). n<=1 always returns 0. */
+export function randBelow(rng: Rng, n: number): number {
+  if (n <= 1) return 0;
+  return Math.floor(rng() * n);
+}
+
 export function pick<T>(rng: Rng, list: readonly T[]): T {
   if (list.length === 0) {
     throw new Error("pick() on empty list");
