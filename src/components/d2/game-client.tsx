@@ -90,7 +90,7 @@ export function GameClient() {
   const [difficulty, setDifficulty] = useState<DifficultyId>("normal");
   const [gold, setGold] = useState(0);
   const [lastFarm, setLastFarm] = useState<FarmResult | null>(null);
-  const [labOpen, setLabOpen] = useState(false);
+  const [labOpen, setLabOpen] = useState(true);
   const [quality, setQuality] = useState<Quality | "random">("random");
   const [kind, setKind] = useState<ItemKind | "random">("random");
   const [count, setCount] = useState(10);
