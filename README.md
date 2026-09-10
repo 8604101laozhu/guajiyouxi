@@ -41,7 +41,15 @@ chance 越小越好，成功条件是 `rand(chance) === 0`。金怪/首领/噩�
 
 命中率：`clamp(200 × AR/(AR+防御) × 等级比, 5%, 95%)`。
 
-## 本地运行
+## 法师走路关键帧
+
+把本机 `法师/sprites/walk` 里**纯数字**的 png（`0.png`、`1.png`…）拷到：
+
+```
+public/sprites/mage/walk/
+```
+
+工坊左侧会按数字顺序循环播放。若是四向各 4 帧，把「每向帧」调成 4。
 
 ```bash
 npm install

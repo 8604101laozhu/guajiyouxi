@@ -36,6 +36,7 @@ import { DamageStudio } from "./damage-studio";
 import { qualityTint } from "./item-tooltip";
 import { ItemTooltip } from "./item-tooltip";
 import { PaperDoll } from "./paper-doll";
+import { SpriteWalkPreview } from "./sprite-walk";
 
 const STORAGE_KEY = "hanger-forge-v2";
 
@@ -436,6 +437,9 @@ export function GameClient() {
             selectedId={selectedId}
             onSelect={(item) => setSelectedId(item.id)}
           />
+          <div className="mt-4">
+            <SpriteWalkPreview />
+          </div>
           <div className="mt-4 space-y-2">
             <Field label={`等级 ${character.level}`}>
               <Slider value={[character.level]} min={1} max={99} onValueChange={(v) => setAttr("level", sliderNumber(v))} />
