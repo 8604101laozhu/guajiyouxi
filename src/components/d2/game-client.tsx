@@ -38,7 +38,7 @@ import { ItemTooltip } from "./item-tooltip";
 import { PaperDoll } from "./paper-doll";
 import { SpriteWalkPreview } from "./sprite-walk";
 
-const STORAGE_KEY = "hanger-forge-v2";
+const STORAGE_KEY = "guajiyouxi-v1";
 
 type Persist = {
   character: Character;
@@ -349,7 +349,7 @@ export function GameClient() {
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6">
       <header className="flex flex-col gap-2 border-b border-[#6a5428] pb-4">
-        <p className="text-xs tracking-[0.35em] text-[#c7a24a]">HANGER · 装备工坊</p>
+        <p className="text-xs tracking-[0.35em] text-[#c7a24a]">GUAJIYOUXI · 挂机游戏</p>
         <h1 className="text-2xl font-semibold text-[#f0ead8] sm:text-3xl">暗黑 2 掉落 · 手游关卡梯度</h1>
         <p className="max-w-3xl text-sm leading-6 text-[#cfc3a6]">
           单件怎么出还是暗黑 2：TC 抽基底，ItemRatio 走暗金→套装→稀有→魔法。关卡血量、推荐战力、抽次和空箱按现在挂机手游的章节难度抬。立绘先空着。

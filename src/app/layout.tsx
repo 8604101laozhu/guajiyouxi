@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "装备工坊 · 暗黑 2 部位与伤害",
-  description: "暗黑 2 风格装备部位、命名、词缀与伤害掷骰底子。立绘和场景留给你的练丹素材。",
+  title: "挂机游戏",
+  description: "暗黑 2 装备与手游关卡梯度的挂机游戏。立绘和走路帧放在 public/sprites。",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
