@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readdir } from "node:fs/promises";
+import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { sortNumericFrames } from "@/lib/sprites/clip";
 
@@ -11,7 +11,13 @@ export async function GET(request: Request) {
   const dir = path.join(process.cwd(), "public", "sprites", clip);
   try {
     const names = await readdir(dir);
-    const frames = sortNumericFrames(names).map((file) => `/sprites/${clip}/${file}`);
+    const files = sortNumericFrames(names);
+    const frames = await Promise.all(
+      files.map(async (file) => {
+        const info = await stat(path.join(dir, file));
+        return `/sprites/${clip}/${file}?v=${Math.floor(info.mtimeMs)}`;
+      }),
+    );
     return NextResponse.json({ clip, frames, dir: `public/sprites/${clip}` });
   } catch {
     return NextResponse.json({ clip, frames: [], dir: `public/sprites/${clip}` });

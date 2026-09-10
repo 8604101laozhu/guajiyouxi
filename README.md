@@ -2,13 +2,11 @@
 
 以后都在这个工程里跑。暗黑 2 装备底子 + 手游关卡梯度。立绘和走路帧放 `public/sprites`。
 
-本机炼丹目录（`D:\ai炼丹\香草社\...`）不会自动同步，走路图请拷到：
+走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。接口 `GET /api/sprites?clip=mage/walk` 按数字排序后循环播放。
 
-```
-public/sprites/mage/walk/0.png
-public/sprites/mage/walk/1.png
-…
-```
+继续加帧时文件名保持纯数字：`8.png`、`9.png`。同一动作的其它片段用同规则，例如 `public/sprites/mage/idle/`、`public/sprites/mage/attack/`。
+
+目前这 8 张是同一走路姿态的试色（底不同），还不是连续步态。真正走路循环需要同一透明底、姿态依次变化的帧。
 
 ## 掉落（暗黑 2）
 

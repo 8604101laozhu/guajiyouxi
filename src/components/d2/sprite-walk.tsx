@@ -53,13 +53,22 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs tracking-[0.2em] text-[#c7a24a]">法师走路</p>
-      <div className="flex min-h-40 items-center justify-center border border-[#3a2a18] bg-[#0c0a08]">
+      <div
+        className="flex min-h-72 items-center justify-center border border-[#3a2a18] bg-[#0c0a08]"
+        style={{
+          backgroundImage:
+            "linear-gradient(45deg,#1a140c 25%,transparent 25%),linear-gradient(-45deg,#1a140c 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a140c 75%),linear-gradient(-45deg,transparent 75%,#1a140c 75%)",
+          backgroundSize: "16px 16px",
+          backgroundPosition: "0 0,0 8px,8px -8px,-8px 0",
+          backgroundColor: "#120e0a",
+        }}
+      >
         {current ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={current}
             alt={`walk ${frame}`}
-            className="max-h-40 max-w-full"
+            className="max-h-72 max-w-full object-contain"
           />
         ) : (
           <p className="max-w-[16rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">
@@ -71,8 +80,31 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
           </p>
         )}
       </div>
+      {clipFrames.length > 0 ? (
+        <div className="grid grid-cols-4 gap-1">
+          {clipFrames.map((src, i) => (
+            <button
+              key={`${src}-${i}`}
+              type="button"
+              onClick={() => {
+                setPlaying(false);
+                setFrame(i);
+              }}
+              className={cn(
+                "border bg-[#0c0a08] p-0.5",
+                i === frame ? "border-[#c7a24a]" : "border-[#3a2a18]",
+              )}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={`帧 ${i}`} className="h-12 w-full object-contain" />
+            </button>
+          ))}
+        </div>
+      ) : null}
       <p className="text-[11px] text-[#8a7a5a]">
-        {index?.frames.length ? `${index.frames.length} 帧 · 当前 ${frame + 1}/${clipFrames.length}` : "等待关键帧"}
+        {index?.frames.length
+          ? `${index.frames.length} 帧 · 当前 ${frame + 1}/${clipFrames.length} · 目前是同姿态试色，不是步态循环`
+          : "等待关键帧"}
       </p>
       <div className="flex flex-wrap gap-2">
         <button
