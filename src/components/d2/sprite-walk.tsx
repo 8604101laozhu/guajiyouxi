@@ -50,11 +50,21 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
 
   const current = clipFrames[Math.min(frame, Math.max(0, clipFrames.length - 1))];
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const node = document.getElementById("mage-walk");
+    if (!node) return;
+    if (window.location.hash !== "#mage-walk") {
+      window.history.replaceState(null, "", "#mage-walk");
+    }
+    node.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [index?.frames.length]);
+
   return (
     <div className="flex flex-col gap-2">
       <p className="text-xs tracking-[0.2em] text-[#c7a24a]">法师走路</p>
       <div
-        className="flex min-h-72 items-center justify-center border border-[#3a2a18] bg-[#0c0a08]"
+        className="flex min-h-96 items-center justify-center border border-[#3a2a18] bg-[#0c0a08]"
         style={{
           backgroundImage:
             "linear-gradient(45deg,#1a140c 25%,transparent 25%),linear-gradient(-45deg,#1a140c 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a140c 75%),linear-gradient(-45deg,transparent 75%,#1a140c 75%)",
@@ -68,7 +78,7 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
           <img
             src={current}
             alt={`walk ${frame}`}
-            className="max-h-72 max-w-full object-contain"
+            className="max-h-96 max-w-full object-contain"
           />
         ) : (
           <p className="max-w-[16rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">

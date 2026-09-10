@@ -356,22 +356,27 @@ export function GameClient() {
         </p>
       </header>
 
-      <CampaignBench
-        character={character}
-        gearMf={gearMf}
-        extraMf={magicFind}
-        onExtraMf={setMagicFind}
-        chapter={chapter}
-        stage={stage}
-        difficulty={difficulty}
-        gold={gold}
-        lastFarm={lastFarm}
-        onChapter={(n) => selectStage(n, stage, difficulty)}
-        onStage={(n) => selectStage(chapter, n, difficulty)}
-        onDifficulty={(d) => selectStage(chapter, stage, d)}
-        onFarm={runFarm}
-        onFarmMany={runFarmMany}
-      />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
+        <section id="mage-walk" className="border border-[#6a5428] bg-[#120e0a] p-4">
+          <SpriteWalkPreview />
+        </section>
+        <CampaignBench
+          character={character}
+          gearMf={gearMf}
+          extraMf={magicFind}
+          onExtraMf={setMagicFind}
+          chapter={chapter}
+          stage={stage}
+          difficulty={difficulty}
+          gold={gold}
+          lastFarm={lastFarm}
+          onChapter={(n) => selectStage(n, stage, difficulty)}
+          onStage={(n) => selectStage(chapter, n, difficulty)}
+          onDifficulty={(d) => selectStage(chapter, stage, d)}
+          onFarm={runFarm}
+          onFarmMany={runFarmMany}
+        />
+      </div>
 
       <section className="flex flex-col gap-3 border border-[#6a5428] bg-[#140f0a] p-4">
         <button type="button" className="text-left text-xs tracking-[0.2em] text-[#c7a24a]" onClick={() => setLabOpen((v) => !v)}>
@@ -437,9 +442,6 @@ export function GameClient() {
             selectedId={selectedId}
             onSelect={(item) => setSelectedId(item.id)}
           />
-          <div className="mt-4">
-            <SpriteWalkPreview />
-          </div>
           <div className="mt-4 space-y-2">
             <Field label={`等级 ${character.level}`}>
               <Slider value={[character.level]} min={1} max={99} onValueChange={(v) => setAttr("level", sliderNumber(v))} />
