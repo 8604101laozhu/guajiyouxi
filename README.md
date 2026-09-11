@@ -8,7 +8,7 @@
 - 换武器：W4/W5 的 `COSMETIC_NAME`，只换武器层，不重出身体
 - 网页「动作循环」：选走路/攻击/死亡，选空手/法杖/剑。纸娃娃换主手也走同一套 cosmetics
 
-本机 16GB 先跑 W2 出空手身体，放进 `public/sprites/inbox/base_animations/{walking|attack|death}/`。武器层目录已经建成官方那种 `cosmetics/{COSMETIC_NAME}/{ANIMATION_NAME}/`，以后有显存再跑 W4。
+本机 16GB 先跑 W2 出空手身体。生成图不要拖进对话：本机打开 `drop/走路`（或双击 `投放.cmd`），`npm run drop:watch -- --push` 会拷进 `public/sprites/inbox` 并推到仓库。炼丹盘可以在 `drop.json` 里写成 `D:\\ai炼丹\\投给挂机游戏`。
 
 工坊左侧可复制填好 `ANIMATION_NAME` 的 W2 提示词。槽位与抽帧说明在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 
@@ -60,3 +60,14 @@ npm run dev
 ```
 
 浏览器打开 [http://localhost:43147](http://localhost:43147)。
+
+## 生成图怎么给我
+
+云端读不到你电脑上的文件夹。最快是本机开一个投放夹，脚本自己进仓库：
+
+```bash
+npm install
+npm run drop:watch -- --push
+```
+
+Windows 也可以双击 `投放.cmd`。把 `0.png` 丢进 `drop/走路`、`drop/攻击`、`drop/死亡`。想对着炼丹目录投，复制 `drop.json.example` 为 `drop.json`，改路径。推完跟我说一声即可，不用再拖进对话框。

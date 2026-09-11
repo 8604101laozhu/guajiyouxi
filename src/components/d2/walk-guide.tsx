@@ -306,6 +306,50 @@ export function MageWalkStudio({
       <pre className="max-h-28 overflow-auto whitespace-pre-wrap border border-[#3a2a18] bg-[#0c0a08] p-2 text-[10px] leading-4 text-[#8a7a5a]">
         {w2Prompt}
       </pre>
+      <DropHint />
+    </div>
+  );
+}
+
+function DropHint() {
+  const [info, setInfo] = useState<{ dropDir: string; command: string; folders: { folder: string; files: number }[] } | null>(
+    null,
+  );
+  const [copiedCmd, setCopied] = useState(false);
+
+  useEffect(() => {
+    void fetch("/api/sprites/drop")
+      .then((res) => res.json())
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, []);
+
+  const waiting = info?.folders.filter((slot) => slot.files > 0) ?? [];
+
+  return (
+    <div className="border border-[#3a2a18] bg-[#0c0a08] p-2 text-[11px] leading-5 text-[#8a7a5a]">
+      <p className="text-[10px] tracking-[0.2em] text-[#c7a24a]">投放文件夹 · 不用拖进对话</p>
+      <p className="mt-1">
+        云端读不到 D 盘。本机打开仓库里的 <span className="text-[#cfc3a6]">drop/走路</span>，或双击{" "}
+        <span className="text-[#cfc3a6]">投放.cmd</span>。图会进 inbox 并 git push。
+      </p>
+      <p className="mt-1 text-[#cfc3a6]">{info?.dropDir ?? "drop/"}</p>
+      <button
+        type="button"
+        className="mt-1 h-7 border border-[#6a5428] px-2 text-[11px] text-[#cfc3a6]"
+        onClick={async () => {
+          await navigator.clipboard.writeText(info?.command ?? "npm run drop:watch -- --push");
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1400);
+        }}
+      >
+        {copiedCmd ? "已复制命令" : "复制监视命令"}
+      </button>
+      {waiting.length ? (
+        <p className="mt-1">投放里待收：{waiting.map((slot) => `${slot.folder} ${slot.files}`).join(" · ")}</p>
+      ) : (
+        <p className="mt-1">投放夹目前是空的。</p>
+      )}
     </div>
   );
 }

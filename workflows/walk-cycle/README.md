@@ -60,4 +60,4 @@ WAN 帧数必须是 `4n+1`（33 或 49）。16fps 下 33 帧约 2 秒。从视�
 | W4 剑 | `public/sprites/inbox/cosmetics/sword/{ANIMATION_NAME}/` |
 | 立绘试色 | `public/sprites/inbox/stills/` |
 
-拖进这条对话的输入框也可以，我会按类型拷进去。不要只留在本机炼丹目录。
+拖进这条对话的输入框也可以，但更省事的是本机 `drop/` 文件夹 + `npm run drop:watch -- --push`。不要只留在本机炼丹目录。

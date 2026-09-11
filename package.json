@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start --port 43147",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "drop": "node scripts/drop.mjs",
+    "drop:watch": "node scripts/drop.mjs --watch",
+    "drop:push": "node scripts/drop.mjs --push"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

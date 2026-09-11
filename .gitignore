@@ -30,8 +30,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# local sprite drop folder (images only; notes stay tracked)
+drop.json
+/drop/**/*.png
+/drop/**/*.webp
+/drop/**/*.gif
+/drop/**/*.jpg
+/drop/**/*.jpeg
 
 # vercel
 .vercel
