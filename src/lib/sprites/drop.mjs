@@ -123,8 +123,16 @@ export function resolveDropRel(rel) {
   if (!parsed) return null;
   const fromFolders = hitFromTokens(bits, parsed.index, parsed.ext);
   if (fromFolders) return fromFolders;
-  if (bits.length === 0) return hitFromPrefix(parsed.prefix, parsed.index, parsed.ext);
-  return null;
+  if (bits.length === 0) {
+    return (
+      hitFromPrefix(parsed.prefix, parsed.index, parsed.ext) ?? {
+        clip: "inbox/unsorted",
+        index: parsed.index,
+        ext: parsed.ext,
+      }
+    );
+  }
+  return { clip: "inbox/unsorted", index: parsed.index, ext: parsed.ext };
 }
 
 export function numericFrameName(file) {

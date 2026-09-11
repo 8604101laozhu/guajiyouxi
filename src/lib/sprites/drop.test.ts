@@ -29,6 +29,11 @@ describe("drop folder routing", () => {
       ext: "png",
     });
     expect(resolveDropRel("notes.txt")).toBeNull();
+    expect(resolveDropRel("ComfyUI_00012_.png")).toEqual({
+      clip: "inbox/unsorted",
+      index: null,
+      ext: "png",
+    });
   });
 
   it("fills the next index when the file is not numbered", async () => {

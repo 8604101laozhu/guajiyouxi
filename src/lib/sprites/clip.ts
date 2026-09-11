@@ -21,6 +21,7 @@ export function sliceDirection(frames: string[], framesPerDir: number, direction
 }
 
 export const SPRITE_INBOX = {
+  unsorted: "inbox/unsorted",
   stills: "inbox/stills",
   walking: "inbox/base_animations/walking",
   attack: "inbox/base_animations/attack",

@@ -45,7 +45,7 @@ function gitPush(copied) {
     console.error("推送失败：先在网页点 Create repo，本机 git remote 指向那个仓库。");
     return;
   }
-  console.log("已推到仓库。跟我说一声「投了走路」即可，不用再拖进对话。");
+  console.log("已推到仓库。回来跟我说「图放好了」。");
 }
 
 async function run(dropDir, push) {
@@ -53,7 +53,7 @@ async function run(dropDir, push) {
   const copied = await ingestDrop(dropDir, inboxRoot);
   if (!copied.length) {
     console.log(`投放文件夹是空的：${dropDir}`);
-    console.log("把 0.png 丢进 走路 / 攻击 / 死亡，或用法杖/剑 子文件夹。");
+    console.log("生成的 png 直接扔进这个文件夹就行，不用分类。");
     return copied;
   }
   for (const item of copied) {
@@ -80,7 +80,7 @@ if (flags.watchMode) {
     }, 500);
   };
   watch(dropDir, { recursive: true }, kick);
-  console.log("正在监视。生成图扔进来就会进 inbox" + (push ? " 并 git push。" : "。加 --push 会提交到仓库。"));
+  console.log("正在监视。生成图直接扔进来就会上传" + (push ? "。" : "。加 --push 会提交到仓库。"));
   kick();
 } else {
   await run(dropDir, push);

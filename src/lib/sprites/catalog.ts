@@ -28,6 +28,7 @@ export function cosmeticDir(cosmetic: CosmeticName, animation: AnimationName): s
 
 export function allInboxClips(): string[] {
   const clips = [
+    "inbox/unsorted",
     "inbox/stills",
     ...ANIMATION_NAMES.map(baseAnimationDir),
   ];

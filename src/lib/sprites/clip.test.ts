@@ -27,6 +27,7 @@ describe("numeric sprite clips", () => {
   });
 
   it("keeps a fixed inbox so generated frames have one drop folder", () => {
+    expect(INBOX_CLIPS).toContain("inbox/unsorted");
     expect(INBOX_CLIPS).toContain("inbox/base_animations/walking");
     expect(INBOX_CLIPS).toContain("inbox/cosmetics/staff/attack");
     expect(INBOX_CLIPS).toContain("inbox/cosmetics/sword/death");
