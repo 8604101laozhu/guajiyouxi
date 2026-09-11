@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { watch } from "node:fs";
 import path from "node:path";
@@ -17,6 +18,13 @@ function args() {
 
 function gitPush(copied) {
   if (!copied.length) return;
+  if (!existsSync(path.join(repoRoot, ".git"))) {
+    console.log("图已经拷进工程了，但这份没有 git，推不上去。");
+    console.log("不要把 png 拖进 Cursor 对话，很费 token。");
+    console.log("关掉这个窗口，双击 接通仓库.cmd，贴上 Create repo 的地址。");
+    console.log("通了以后再开 投放.cmd，之后只需跟我说「图放好了」。");
+    return;
+  }
   const add = spawnSync("git", ["add", "--", "public/sprites/inbox"], { cwd: repoRoot, encoding: "utf8" });
   if (add.status !== 0) {
     console.error(add.stderr || add.stdout);

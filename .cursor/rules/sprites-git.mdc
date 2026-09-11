@@ -1,0 +1,8 @@
+---
+description: Sprite PNGs travel by git, never by chat vision
+alwaysApply: true
+---
+
+Do not open, describe, or visually inspect PNG/WebP/JPEG under `public/sprites` or chat image attachments unless the user explicitly asks to look at a frame.
+
+When the user says the frames are ready (图放好了), run `git pull` and list file names and counts only. Do not Read image files into the model. Chat uploads of sprite dumps waste tokens; prefer git.
