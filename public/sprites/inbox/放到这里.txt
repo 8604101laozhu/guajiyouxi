@@ -1,0 +1,14 @@
+把生成图收进这里。我只从这些子文件夹读，不要只留在 D 盘炼丹目录。
+
+文件名用纯数字：0.png、1.png、2.png …
+png / webp / gif / jpg 都可以。
+
+| 子文件夹 | 放什么 |
+| --- | --- |
+| mage/stills | 立绘试色（同一姿势也行） |
+| mage/walk-cycle | WAN 抽好的走路循环 |
+| mage/hair | 头发层（透明底） |
+| mage/idle | 待机 |
+| mage/attack | 攻击 |
+
+网页对话框：拖进带 + 和 Send 的那一行，我会按类型拷进对应子文件夹。

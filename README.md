@@ -4,7 +4,7 @@
 
 走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。这些还是同一姿势的试色，没有摆臂和换脚。步态工作流在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)：用 OpenPose 锁手脚，再走 [mor-o 的 ComfyUI 管线](https://github.com/mor-o/comfyui-2d-character-pipeline)（Qwen-Image-Edit → WAN 2.2 图生视频 → 抽帧）。工坊左侧「法师走路」分女/男管线：同一套 WAN 图生视频，只换 `BODY` / `HAIR` / `CHEST` 提示词。女角色默认长发滞后抖动，部分角色再加落脚延迟的胸腔回弹；男角色提示词写成躯干稳住。槽位见 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 
-抽好的循环帧用纯数字文件名拖进对话输入框，放到 `public/sprites/mage/walk-cycle/`。
+立绘和走路帧统一收进 [`public/sprites/inbox`](public/sprites/inbox/放到这里.txt)。走路循环放 `inbox/mage/walk-cycle/`，立绘试色放 `inbox/mage/stills/`，头发层放 `inbox/mage/hair/`。文件名 `0.png`、`1.png`… 拖进对话输入框也可以，我会拷进对应子文件夹。
 
 ## 掉落（暗黑 2）
 

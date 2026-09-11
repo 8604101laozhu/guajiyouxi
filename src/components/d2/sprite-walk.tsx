@@ -1,6 +1,6 @@
 "use client";
 
-import { sliceDirection } from "@/lib/sprites/clip";
+import { MAGE_WALK_CLIP, MAGE_WALK_CYCLE_CLIP, sliceDirection } from "@/lib/sprites/clip";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,7 +10,13 @@ type SpriteIndex = {
   dir: string;
 };
 
-export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
+export function SpriteWalkPreview({
+  clip = MAGE_WALK_CYCLE_CLIP,
+  fallback = MAGE_WALK_CLIP,
+}: {
+  clip?: string;
+  fallback?: string;
+}) {
   const [index, setIndex] = useState<SpriteIndex | null>(null);
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(true);
@@ -19,21 +25,29 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`/api/sprites?clip=${encodeURIComponent(clip)}`)
-      .then((res) => res.json() as Promise<SpriteIndex>)
-      .then((data) => {
-        if (!cancelled) {
-          setIndex(data);
-          setFrame(0);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) setIndex({ clip, frames: [], dir: `public/sprites/${clip}` });
-      });
+    async function load() {
+      const first = await fetch(`/api/sprites?clip=${encodeURIComponent(clip)}`)
+        .then((res) => res.json() as Promise<SpriteIndex>)
+        .catch(() => ({ clip, frames: [] as string[], dir: `public/sprites/${clip}` }));
+      if (cancelled) return;
+      if (first.frames.length > 0 || !fallback || fallback === clip) {
+        setIndex(first);
+        setFrame(0);
+        return;
+      }
+      const second = await fetch(`/api/sprites?clip=${encodeURIComponent(fallback)}`)
+        .then((res) => res.json() as Promise<SpriteIndex>)
+        .catch(() => ({ clip: fallback, frames: [] as string[], dir: `public/sprites/${fallback}` }));
+      if (!cancelled) {
+        setIndex(second);
+        setFrame(0);
+      }
+    }
+    void load();
     return () => {
       cancelled = true;
     };
-  }, [clip]);
+  }, [clip, fallback]);
 
   const clipFrames = useMemo(() => {
     const all = index?.frames ?? [];
@@ -72,9 +86,11 @@ export function SpriteWalkPreview({ clip = "mage/walk" }: { clip?: string }) {
           />
         ) : (
           <p className="max-w-[16rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">
-            还没有帧。把 0.png、1.png…
+            还没有帧。生成图放到
             <br />
-            拖进这条对话的输入框（+ / Send）
+            `public/sprites/inbox/mage/walk-cycle/`
+            <br />
+            或拖进这条对话的输入框
           </p>
         )}
       </div>

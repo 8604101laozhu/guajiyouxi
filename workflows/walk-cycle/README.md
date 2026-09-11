@@ -33,7 +33,7 @@ W2 提示词按性别只换三个槽：`BODY` / `HAIR` / `CHEST`。图还是同�
 
 头发按 [mor-o Pipeline 2](https://github.com/mor-o/comfyui-2d-character-pipeline) 做成独立 cosmetic 层（W4 VACE 两遍 inpaint，W5 SAM3 `prompt=hair`）。运行时叠在身体上，梢用二次运动抖动。男女同一张图生视频工作流，只替换提示词槽。
 
-WAN 帧数必须是 `4n+1`（33 或 49）。16fps 下 33 帧约 2 秒。从视频里**只抽一个完整循环的 8～12 帧**，存成 `public/sprites/mage/walk-cycle/0.png` …
+WAN 帧数必须是 `4n+1`（33 或 49）。16fps 下 33 帧约 2 秒。从视频里**只抽一个完整循环的 8～12 帧**，存进 `public/sprites/inbox/mage/walk-cycle/`。
 
 ### 2. 只要关键帧、先不跑视频
 
@@ -51,8 +51,12 @@ WAN 帧数必须是 `4n+1`（33 或 49）。16fps 下 33 帧约 2 秒。从视�
 
 ## 抽好的帧怎么交给工坊
 
-文件名纯数字，拖进这条对话的输入框：
+统一收进 `public/sprites/inbox/`：
 
-`public/sprites/mage/walk-cycle/0.png` … `11.png`
+| 产出 | 文件夹 |
+| --- | --- |
+| 走路循环 | `public/sprites/inbox/mage/walk-cycle/0.png` … |
+| 立绘试色 | `public/sprites/inbox/mage/stills/` |
+| 头发层 | `public/sprites/inbox/mage/hair/` |
 
-工坊「法师走路」会按数字排序循环。骨骼引导只是预览步态；衣服和靴子的形变要等 W2 的帧。
+拖进这条对话的输入框也可以，我会按类型拷进去。不要只留在本机炼丹目录。

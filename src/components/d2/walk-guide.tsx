@@ -178,7 +178,8 @@ export function MageWalkStudio() {
         <canvas ref={canvasRef} width={360} height={480} className="mx-auto block h-auto w-full max-h-[28rem]" />
       </div>
       <p className="text-[11px] leading-5 text-[#8a7a5a]">
-        金线是头发二次运动（根钉头皮、梢滞后抖动）。女管线另加落脚延迟的胸腔回弹；男管线提示词改成「躯干稳住、无胸部抖动」。同一套 WAN 图，只换槽位。
+        生成图统一收进 <span className="text-[#cfc3a6]">public/sprites/inbox/</span>
+        ：走路循环进 mage/walk-cycle，立绘进 mage/stills，头发层进 mage/hair。文件名 0.png、1.png… 拖进这条对话我也会拷到对应子文件夹。
       </p>
       <div className="flex flex-wrap gap-2">
         <button

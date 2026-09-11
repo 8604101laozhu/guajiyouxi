@@ -18,4 +18,16 @@ export function sliceDirection(frames: string[], framesPerDir: number, direction
   return frames.slice(start, start + framesPerDir);
 }
 
+export const SPRITE_INBOX = {
+  stills: "inbox/mage/stills",
+  walkCycle: "inbox/mage/walk-cycle",
+  hair: "inbox/mage/hair",
+  idle: "inbox/mage/idle",
+  attack: "inbox/mage/attack",
+} as const;
+
+export const INBOX_CLIPS = Object.values(SPRITE_INBOX);
+
 export const MAGE_WALK_CLIP = "mage/walk";
+export const MAGE_WALK_CYCLE_CLIP = SPRITE_INBOX.walkCycle;
+

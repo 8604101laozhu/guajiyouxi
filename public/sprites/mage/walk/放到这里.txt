@@ -1,2 +1,9 @@
-把走路关键帧拖进这条对话下面带 + 和 Send 的输入框（文件名用 0.png、1.png、2.png …）。
-我会写进这个文件夹。不要只放在 D:\ai炼丹 里，那边这台机器读不到。
+生成图不要只放在本机炼丹目录。统一收进仓库：
+
+public/sprites/inbox/
+
+走路循环 → inbox/mage/walk-cycle/
+立绘试色 → inbox/mage/stills/
+头发层   → inbox/mage/hair/
+
+网页对话框拖进 + / Send，我会按类型放进对应子文件夹。
