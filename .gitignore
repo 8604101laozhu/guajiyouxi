@@ -38,8 +38,8 @@ drop.json
 /drop/**/*.jpg
 /drop/**/*.jpeg
 
-# vercel
-.vercel
+# local zip download (too large for git; served from the running app)
+/public/*.zip
 
 # typescript
 *.tsbuildinfo

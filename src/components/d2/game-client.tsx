@@ -379,6 +379,12 @@ export function GameClient() {
       <header className="flex flex-col gap-2 border-b border-[#6a5428] pb-4">
         <p className="text-xs tracking-[0.35em] text-[#c7a24a]">GUAJIYOUXI · 挂机游戏</p>
         <h1 className="text-2xl font-semibold text-[#f0ead8] sm:text-3xl">暗黑 2 掉落 · 手游关卡梯度</h1>
+        <a
+          href="/api/download"
+          className="inline-flex h-9 w-fit items-center border border-[#c7a24a] px-3 text-sm text-[#c7a24a]"
+        >
+          下载工程到电脑
+        </a>
         <p className="max-w-3xl text-sm leading-6 text-[#cfc3a6]">
           单件怎么出还是暗黑 2：TC 抽基底，ItemRatio 走暗金→套装→稀有→魔法。关卡血量、推荐战力、抽次和空箱按现在挂机手游的章节难度抬。左侧动作循环：走路 / 攻击 / 死亡共用一条 W2，换武器只换 W4 层。
         </p>
