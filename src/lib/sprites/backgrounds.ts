@@ -1,6 +1,6 @@
 import { CHAPTERS } from "@/lib/d2/campaign";
 
-/** 横板循环条。左右必须能接上，游戏按这条尺寸 cover 裁切。 */
+/** 横板循环条硬规格。左右必须能接上，游戏按这条尺寸 cover 裁切。 */
 export const BACKGROUND_SPEC = {
   width: 3840,
   minWidth: 1920,
@@ -25,6 +25,53 @@ export const BG_LAYER_LABEL: Record<BgLayerId, string> = {
   mid: "中景",
   ground: "地面",
   loop: "整条循环",
+};
+
+/**
+ * 香草社（Vanillaware）画风 World。
+ * 技术硬规格 + 画风锁在一起，可直接贴进 ComfyUI / NovelAI World，或经 backgroundThemePrompt 拼章节场景。
+ */
+export const VANILLAWARE_WORLD = {
+  name: "香草社横板背景世界",
+  style: [
+    "Vanillaware style hand-painted 2D fantasy background",
+    "Odin Sphere / Dragon's Crown / Muramasa scenic atmosphere",
+    "ornate decorative foliage and architecture, rich oil-paint texture",
+    "soft theatrical lighting, layered depth silhouettes, controlled saturated palette",
+    "game art background plate, not concept-sheet collage, not photoreal, not 3D render",
+  ].join(", "),
+  hardRulesZh: [
+    `尺寸 ${BACKGROUND_SPEC.width}×${BACKGROUND_SPEC.height}（两屏宽）。最低 ${BACKGROUND_SPEC.minWidth}×${BACKGROUND_SPEC.height}`,
+    "格式 PNG，不要 JPEG",
+    "接缝：左边必须接得上右边，能无缝横铺",
+    `地面：地面线水平，大约在画面高度 ${Math.round(BACKGROUND_SPEC.groundY * 100)}%（人物脚踩这条线）`,
+    "镜头：纯侧面横板，地平线水平",
+    "禁止：人物、怪物、UI、字、水印；太阳/月亮/独一门独一城堡这类没法循环的地标",
+  ],
+  hardRulesEn: [
+    `Canvas ${BACKGROUND_SPEC.width}x${BACKGROUND_SPEC.height} landscape tile (two screens wide); minimum ${BACKGROUND_SPEC.minWidth}x${BACKGROUND_SPEC.height}.`,
+    "PNG only, no JPEG banding.",
+    "Seamless horizontal loop: left edge matches right edge exactly; tileable terrain only.",
+    `Level ground line at ${Math.round(BACKGROUND_SPEC.groundY * 100)}% from the top; characters will stand on this line.`,
+    "Pure orthographic side-scroller camera, locked horizon, continuous ground plane, no vanishing-point hallway.",
+    "Empty of characters, monsters, UI, text, watermarks, weapons.",
+    "No unique landmarks that break looping: one sun, one moon, one named castle, one unique door, one hero monument.",
+  ],
+} as const;
+
+const CHAPTER_SCENES: Record<number, string> = {
+  1: "blood-soaked wasteland, dead grass, cracked red earth, repeating ruined fence posts, overcast crimson sky, Diablo Act 1 wilderness mood",
+  2: "frozen tundra at dusk, ice shards, pine silhouettes repeating, pale aurora haze, cold plains",
+  3: "underground catacomb corridor in side view, bone piles, torch niches repeating, damp stone, no vanishing-point hallway",
+  4: "ancient sewer channel, green water, mossy brick arches repeating, torchlight",
+  5: "arid rocky highland, sandstone cliffs, dry shrubs repeating, heat haze, late afternoon",
+  6: "desert tomb interior strip, painted pillars repeating, sand drifts, dim gold light",
+  7: "spider forest, giant webs between trees, purple fog, twisted roots repeating",
+  8: "ruined bazaar street, collapsed stalls, hanging cloth repeating, humid dusk",
+  9: "fortified plains, palisades repeating, war camp wreckage, ash sky",
+  10: "chaos sanctuary outer court, lava cracks, pentagram tiles repeating, infernal glow",
+  11: "frozen plateau, barbarian ruin fragments repeating, snow cliffs, blizzard haze",
+  12: "keep hall in side view, crystal veins, red banners repeating, no unique throne",
 };
 
 export function backgroundClip(chapter: number): string {
@@ -81,33 +128,23 @@ export function stageRunSeconds(kind: "minion" | "champion" | "boss", powerRatio
   return Math.max(2.8, base / Math.min(1.8, Math.max(0.7, powerRatio)));
 }
 
+/** 香草社 World 正文（不含章节场景），适合贴进固定 World 槽。 */
+export function vanillawareWorldPrompt(): string {
+  return [
+    VANILLAWARE_WORLD.name,
+    VANILLAWARE_WORLD.style,
+    ...VANILLAWARE_WORLD.hardRulesEn,
+    "Readable silhouette when scaled to 320px tall.",
+  ].join(" ");
+}
+
+/** 网页「复制本章背景提示词」：香草社 World + 本章场景。 */
 export function backgroundThemePrompt(chapter: number): string {
   const ch = CHAPTERS[Math.max(0, Math.min(CHAPTERS.length, chapter) - 1)];
-  const scenes: Record<number, string> = {
-    1: "blood-soaked wasteland, dead grass, cracked red earth, distant ruined keep, overcast crimson sky, Diablo 2 Act 1 wilderness",
-    2: "frozen tundra at dusk, ice shards, pine silhouettes, pale aurora, Diablo 2 cold plains",
-    3: "underground catacomb corridor in side view, bone piles, torch niches, damp stone, no vanishing-point hallway",
-    4: "ancient sewer channel, green water, mossy brick arches repeating, torchlight, Lut Gholein sewers",
-    5: "arid rocky highland, sandstone cliffs, dry shrubs, heat haze, late afternoon",
-    6: "desert tomb interior strip, painted pillars repeating, sand drifts, dim gold light",
-    7: "spider forest, giant webs between trees, purple fog, twisted roots, Kurast jungle",
-    8: "ruined Kurast bazaar street, collapsed stalls, hanging cloth, humid dusk",
-    9: "fortified plains, palisades, war camp wreckage, ash sky, Hellforge approach",
-    10: "Chaos Sanctuary outer court, lava cracks, pentagram tiles repeating, infernal glow",
-    11: "frozen plateau, barbarian ruins, snow cliffs, blizzard haze",
-    12: "Worldstone Keep hall in side view, crystal veins, red banners repeating, no unique throne",
-  };
-  const scene = scenes[ch.id] ?? ch.name;
+  const scene = CHAPTER_SCENES[ch.id] ?? ch.name;
   return [
-    `Side-scrolling 2D game background tile, landscape, ${BACKGROUND_SPEC.width}x${BACKGROUND_SPEC.height}.`,
-    scene,
-    `${ch.act} ${ch.name}.`,
-    "Empty of characters, monsters, UI, text, watermarks, and weapons.",
-    "Orthographic side view, camera locked, horizon straight, ground plane continuous.",
-    `Ground line at ${Math.round(BACKGROUND_SPEC.groundY * 100)}% from the top, perfectly level.`,
-    "Seamless horizontal loop: left edge matches right edge. Repeatable terrain only.",
-    "No unique landmarks (one sun, one named castle, one moon, one door).",
-    "Painterly dark fantasy, muted, readable silhouette at 320px tall.",
-    "PNG, no JPEG banding.",
+    vanillawareWorldPrompt(),
+    `Chapter scene: ${ch.act} ${ch.name}. ${scene}.`,
+    "Single continuous side-scrolling strip, empty playfield for a character later.",
   ].join(" ");
 }

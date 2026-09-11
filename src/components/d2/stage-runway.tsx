@@ -241,7 +241,7 @@ export function StageRunway({
           onClick={() => void copyPrompt()}
           className="h-8 border border-[#6a5428] px-2 text-xs text-[#c7a24a]"
         >
-          {copied ? "已复制出图提示" : "复制本章背景提示词"}
+          {copied ? "已复制香草社提示" : "复制香草社背景提示词"}
         </button>
       </div>
 

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  BACKGROUND_SPEC,
   backgroundClip,
   backgroundThemePrompt,
   chapterFromName,
   classifyBackgroundFrames,
   parseBgLayer,
   stageRunSeconds,
+  vanillawareWorldPrompt,
 } from "./backgrounds";
 
 describe("chapter background tiles", () => {
@@ -33,10 +35,22 @@ describe("chapter background tiles", () => {
     ).toEqual(["sky", "mid", "ground"]);
   });
 
-  it("keeps the runway looping longer for bosses, short on wipe", () => {
+  it("locks Vanillaware world with the hard tile rules", () => {
+    expect(BACKGROUND_SPEC).toMatchObject({
+      width: 3840,
+      height: 720,
+      groundY: 0.78,
+      format: "png",
+    });
+    const world = vanillawareWorldPrompt();
+    expect(world).toMatch(/Vanillaware/);
+    expect(world).toMatch(/3840x720/);
+    expect(world).toMatch(/78%/);
+    expect(world).toMatch(/Seamless horizontal loop/);
+    expect(world).toMatch(/No unique landmarks/);
     expect(stageRunSeconds("boss", 1)).toBeGreaterThan(stageRunSeconds("minion", 1));
     expect(stageRunSeconds("minion", 0.4)).toBeLessThan(3);
-    expect(backgroundThemePrompt(1)).toMatch(/Seamless horizontal loop/);
     expect(backgroundThemePrompt(1)).toMatch(/鲜血荒地/);
+    expect(backgroundThemePrompt(1)).toMatch(/Vanillaware/);
   });
 });
