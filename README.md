@@ -67,8 +67,8 @@ npm run dev
 
 GitHub 的做法是：图只当仓库里的文件（blob），`git push` / `git pull` 传文件，模型默认看不到像素。
 
-1. 双击 `接通仓库.cmd`，把 Create repo 的地址贴进去（只需一次）
-2. 双击 `投放.cmd`，png 扔进 `drop`
-3. 跟我说「图放好了」——我只 `git pull` 数文件，不打开图
+仓库已接通：https://github.com/8604101laozhu/guajiyouxi.git
 
-还没接通 git 时，图已经在你电脑的 `public\sprites\inbox` 里，等仓库通了会一起推上去。
+1. 双击 `投放.cmd`（一直开着）
+2. png 扔进 `G:\guajiyouxi\guajiyouxi\drop` 对应子目录（走路 / 攻击 / 死亡 / 法杖 / 剑）
+3. 跟我说「图放好了」——我只 `git pull` 数文件名，不打开图
