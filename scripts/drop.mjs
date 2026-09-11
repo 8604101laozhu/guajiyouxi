@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { watch } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { ensureDropTree, ingestDrop, loadDropConfig } from "../src/lib/sprites/drop.mjs";
+import { DROP_FOLDERS, ensureDropTree, ingestDrop, loadDropConfig } from "../src/lib/sprites/drop.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const inboxRoot = path.join(repoRoot, "public", "sprites");
@@ -56,12 +56,26 @@ function gitPush(copied) {
   console.log("已推到仓库。回来跟我说「图放好了」。");
 }
 
+function printSlots(dropDir) {
+  console.log("");
+  console.log("可用子目录：");
+  for (const slot of DROP_FOLDERS) {
+    const mark = slot.folder.startsWith("背景/") ? "← 横板背景" : "";
+    console.log(`  ${path.join(dropDir, ...slot.folder.split("/"))} ${mark}`);
+  }
+  console.log("");
+  console.log("第 1 章背景请扔到：");
+  console.log(`  ${path.join(dropDir, "背景", "1", "loop.png")}`);
+  console.log("");
+}
+
 async function run(dropDir, push) {
   await ensureDropTree(dropDir);
   const copied = await ingestDrop(dropDir, inboxRoot);
   if (!copied.length) {
     console.log(`投放文件夹是空的：${dropDir}`);
-    console.log("生成的 png 直接扔进这个文件夹就行，不用分类。");
+    console.log("角色帧 → 走路 / 攻击 / 死亡");
+    console.log("第 1 章背景 → 背景\\1\\loop.png");
     return copied;
   }
   for (const item of copied) {
@@ -78,6 +92,7 @@ const push = flags.pushFlag || config.push;
 
 await ensureDropTree(dropDir);
 console.log(`投放文件夹：${dropDir}`);
+printSlots(dropDir);
 
 if (flags.watchMode) {
   let timer;
@@ -88,7 +103,7 @@ if (flags.watchMode) {
     }, 500);
   };
   watch(dropDir, { recursive: true }, kick);
-  console.log("正在监视。生成图直接扔进来就会上传" + (push ? "。" : "。加 --push 会提交到仓库。"));
+  console.log("正在监视。生成图扔进来就会进 inbox" + (push ? " 并 git push。" : "。加 --push 会提交到仓库。"));
   kick();
 } else {
   await run(dropDir, push);

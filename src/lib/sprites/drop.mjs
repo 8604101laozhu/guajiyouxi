@@ -243,10 +243,63 @@ export function destFrameName(index, ext) {
   return `${index}.${ext}`;
 }
 
+const SLOT_HINTS = {
+  走路: "走路身体帧：0.png 1.png …\n同一条 W2，ANIMATION_NAME=walking。\n",
+  攻击: "攻击身体帧：0.png 1.png …\n",
+  死亡: "死亡身体帧：0.png 1.png …\n",
+  立绘: "立绘静帧。\n",
+  "法杖/走路": "法杖武器层 · 走路。\n",
+  "法杖/攻击": "法杖武器层 · 攻击。\n",
+  "法杖/死亡": "法杖武器层 · 死亡。\n",
+  "剑/走路": "剑武器层 · 走路。\n",
+  "剑/攻击": "剑武器层 · 攻击。\n",
+  "剑/死亡": "剑武器层 · 死亡。\n",
+};
+
+function backgroundHint(folder) {
+  const chapter = folder.split("/")[1] ?? "1";
+  return [
+    `第 ${chapter} 章横板循环背景。`,
+    "文件名：loop.png（或 sky.png / mid.png / ground.png）",
+    "规格：3840×720 PNG，左右无缝，地面线约 78%，香草社手绘风。",
+    "不要画人物、怪物、UI、字、水印、独一地标。",
+    "",
+  ].join("\n");
+}
+
 export async function ensureDropTree(dropDir) {
+  const { writeFile } = await import("node:fs/promises");
   await mkdir(dropDir, { recursive: true });
+  await writeFile(
+    path.join(dropDir, "放到这里.txt"),
+    [
+      "把生成的 png 丢进对应子目录。",
+      "走路 / 攻击 / 死亡 = 角色帧",
+      "背景\\1 = 第 1 章横板循环条（loop.png）",
+      "不要拖进 Cursor 对话。",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  await mkdir(path.join(dropDir, "背景"), { recursive: true });
+  await writeFile(
+    path.join(dropDir, "背景", "放到这里.txt"),
+    [
+      "横板关卡背景。一章一张循环条。",
+      "第 1 章：把 loop.png 放进 背景\\1\\",
+      "3840×720 PNG。左右必须能接上。不要画人。地面线约 78%。",
+      "香草社（Vanillaware）手绘风。也可拆 sky.png / mid.png / ground.png",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
   for (const slot of DROP_FOLDERS) {
-    await mkdir(path.join(dropDir, ...slot.folder.split("/")), { recursive: true });
+    const dir = path.join(dropDir, ...slot.folder.split("/"));
+    await mkdir(dir, { recursive: true });
+    const hint = slot.folder.startsWith("背景/")
+      ? backgroundHint(slot.folder)
+      : (SLOT_HINTS[slot.folder] ?? `${slot.folder}\n`);
+    await writeFile(path.join(dir, "放到这里.txt"), hint, "utf8");
   }
 }
 
