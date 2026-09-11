@@ -1,10 +1,16 @@
 # 挂机游戏（guajiyouxi）
 
-以后都在这个工程里跑。暗黑 2 装备底子 + 手游关卡梯度。立绘和走路帧放 `public/sprites`。
+以后都在这个工程里跑。暗黑 2 装备底子 + 手游关卡梯度。立绘和循环帧放 `public/sprites`。
 
-走路关键帧已经放进 `public/sprites/mage/walk/`（`0.png` … `7.png`）。这些还是同一姿势的试色，没有摆臂和换脚。步态工作流在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)：用 OpenPose 锁手脚，再走 [mor-o 的 ComfyUI 管线](https://github.com/mor-o/comfyui-2d-character-pipeline)（Qwen-Image-Edit → WAN 2.2 图生视频 → 抽帧）。工坊左侧「法师走路」分女/男管线：同一套 WAN 图生视频，只换 `BODY` / `HAIR` / `CHEST` 提示词。女角色默认长发滞后抖动，部分角色再加落脚延迟的胸腔回弹；男角色提示词写成躯干稳住。槽位见 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
+角色动画接 [mor-o/comfyui-2d-character-pipeline](https://github.com/mor-o/comfyui-2d-character-pipeline)，**没有单独的攻击/死亡工作流，也不另做一套纸娃娃模型**。
 
-立绘和走路帧统一收进 [`public/sprites/inbox`](public/sprites/inbox/放到这里.txt)。走路循环放 `inbox/mage/walk-cycle/`，立绘试色放 `inbox/mage/stills/`，头发层放 `inbox/mage/hair/`。文件名 `0.png`、`1.png`… 拖进对话输入框也可以，我会拷进对应子文件夹。
+- 走路 / 攻击 / 死亡：同一条 **W2**，只换 `ANIMATION_NAME`
+- 换武器：W4/W5 的 `COSMETIC_NAME`，只换武器层，不重出身体
+- 网页「动作循环」：选走路/攻击/死亡，选空手/法杖/剑。纸娃娃换主手也走同一套 cosmetics
+
+本机 16GB 先跑 W2 出空手身体，放进 `public/sprites/inbox/base_animations/{walking|attack|death}/`。武器层目录已经建成官方那种 `cosmetics/{COSMETIC_NAME}/{ANIMATION_NAME}/`，以后有显存再跑 W4。
+
+工坊左侧可复制填好 `ANIMATION_NAME` 的 W2 提示词。槽位与抽帧说明在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 
 ## 掉落（暗黑 2）
 
@@ -31,6 +37,8 @@ chance 越小越好，成功条件是 `rand(chance) === 0`。金怪/首领/噩�
 - 头盔、盔甲、腰带、手套、靴子
 - 项链、左戒指、右戒指
 - 主手、副手（盾或单手武器；双手武器占用副手）
+
+纸娃娃换武器：空手 / 法杖 / 剑。法杖对应 staff/wand/scepter，剑刃对应 sword/dagger/axe/mace/spear/polearm。画面上只换武器层。
 
 ## 伤害
 

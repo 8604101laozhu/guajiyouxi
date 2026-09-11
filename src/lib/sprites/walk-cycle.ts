@@ -1,3 +1,5 @@
+import type { AnimationName } from "./catalog";
+
 /** Classic in-place walk: opposite arm/leg, passing-position bob. t is 0..1. */
 export type WalkPose = {
   bob: number;
@@ -38,4 +40,54 @@ export function walkPose(t: number): WalkPose {
 
 export function walkFrameCount(n = 8): number[] {
   return Array.from({ length: n }, (_, i) => i / n);
+}
+
+/** Same W2 graph, different ANIMATION_NAME: planted feet, one strike then recover. */
+export function attackPose(t: number): WalkPose {
+  const a = ((t % 1) + 1) % 1;
+  let armR = 0;
+  if (a < 0.35) armR = -40 - (a / 0.35) * 22;
+  else if (a < 0.55) armR = -62 + ((a - 0.35) / 0.2) * 118;
+  else armR = 56 * (1 - (a - 0.55) / 0.45);
+  return {
+    bob: 3,
+    hipSway: 0,
+    thighL: 5,
+    thighR: -4,
+    shinL: 8,
+    shinR: 8,
+    armL: -armR * 0.22,
+    armR,
+    forearmL: 12,
+    forearmR: a > 0.35 && a < 0.55 ? 30 : 16,
+    hair: Math.sin(a * Math.PI * 2) * 2,
+    skirt: 0,
+  };
+}
+
+/** Collapse then hold. No get-up. */
+export function deathPose(t: number): WalkPose {
+  const a = ((t % 1) + 1) % 1;
+  const k = Math.min(1, a / 0.72);
+  const ease = k * k;
+  return {
+    bob: ease * 80,
+    hipSway: -ease * 18,
+    thighL: 8 + ease * 40,
+    thighR: -4 + ease * 30,
+    shinL: 10 + ease * 20,
+    shinR: 8 + ease * 16,
+    armL: 20 + ease * 50,
+    armR: -10 + ease * 40,
+    forearmL: 20,
+    forearmR: 18,
+    hair: ease * 12,
+    skirt: ease * 8,
+  };
+}
+
+export function cyclePose(animation: AnimationName, t: number): WalkPose {
+  if (animation === "attack") return attackPose(t);
+  if (animation === "death") return deathPose(t);
+  return walkPose(t);
 }

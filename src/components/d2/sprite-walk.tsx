@@ -1,6 +1,13 @@
 "use client";
 
-import { MAGE_WALK_CLIP, MAGE_WALK_CYCLE_CLIP, sliceDirection } from "@/lib/sprites/clip";
+import { MAGE_WALK_CLIP, sliceDirection } from "@/lib/sprites/clip";
+import {
+  ANIMATION_LABEL,
+  COSMETIC_LABEL,
+  layeredClips,
+  type AnimationName,
+  type CosmeticName,
+} from "@/lib/sprites/catalog";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useState } from "react";
 
@@ -10,38 +17,29 @@ type SpriteIndex = {
   dir: string;
 };
 
-export function SpriteWalkPreview({
-  clip = MAGE_WALK_CYCLE_CLIP,
-  fallback = MAGE_WALK_CLIP,
-}: {
-  clip?: string;
-  fallback?: string;
-}) {
+function useClip(clip: string | null, fallback = "") {
   const [index, setIndex] = useState<SpriteIndex | null>(null);
-  const [frame, setFrame] = useState(0);
-  const [playing, setPlaying] = useState(true);
-  const [fps, setFps] = useState(8);
-  const [framesPerDir, setFramesPerDir] = useState(0);
 
   useEffect(() => {
+    if (!clip) {
+      setIndex({ clip: "", frames: [], dir: "" });
+      return;
+    }
+    const path = clip;
     let cancelled = false;
     async function load() {
-      const first = await fetch(`/api/sprites?clip=${encodeURIComponent(clip)}`)
+      const first = await fetch(`/api/sprites?clip=${encodeURIComponent(path)}`)
         .then((res) => res.json() as Promise<SpriteIndex>)
-        .catch(() => ({ clip, frames: [] as string[], dir: `public/sprites/${clip}` }));
+        .catch(() => ({ clip: path, frames: [] as string[], dir: `public/sprites/${path}` }));
       if (cancelled) return;
-      if (first.frames.length > 0 || !fallback || fallback === clip) {
+      if (first.frames.length > 0 || !fallback || fallback === path) {
         setIndex(first);
-        setFrame(0);
         return;
       }
       const second = await fetch(`/api/sprites?clip=${encodeURIComponent(fallback)}`)
         .then((res) => res.json() as Promise<SpriteIndex>)
         .catch(() => ({ clip: fallback, frames: [] as string[], dir: `public/sprites/${fallback}` }));
-      if (!cancelled) {
-        setIndex(second);
-        setFrame(0);
-      }
+      if (!cancelled) setIndex(second);
     }
     void load();
     return () => {
@@ -49,10 +47,38 @@ export function SpriteWalkPreview({
     };
   }, [clip, fallback]);
 
+  return index;
+}
+
+export function SpriteWalkPreview({
+  animation,
+  cosmetic,
+}: {
+  animation: AnimationName;
+  cosmetic: CosmeticName;
+}) {
+  const layers = layeredClips(animation, cosmetic);
+  const fallback = animation === "walking" ? MAGE_WALK_CLIP : "";
+  const bodyIndex = useClip(layers.body, fallback);
+  const weaponIndex = useClip(layers.weapon);
+  const [frame, setFrame] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [fps, setFps] = useState(8);
+  const [framesPerDir, setFramesPerDir] = useState(0);
+
+  useEffect(() => {
+    setFrame(0);
+  }, [animation, cosmetic]);
+
   const clipFrames = useMemo(() => {
-    const all = index?.frames ?? [];
+    const all = bodyIndex?.frames ?? [];
     return sliceDirection(all, framesPerDir, 0);
-  }, [index?.frames, framesPerDir]);
+  }, [bodyIndex?.frames, framesPerDir]);
+
+  const weaponFrames = useMemo(() => {
+    const all = weaponIndex?.frames ?? [];
+    return sliceDirection(all, framesPerDir, 0);
+  }, [weaponIndex?.frames, framesPerDir]);
 
   useEffect(() => {
     if (!playing || clipFrames.length < 2) return;
@@ -63,12 +89,19 @@ export function SpriteWalkPreview({
   }, [playing, clipFrames.length, fps]);
 
   const current = clipFrames[Math.min(frame, Math.max(0, clipFrames.length - 1))];
+  const weapon =
+    weaponFrames.length > 0
+      ? weaponFrames[Math.min(frame, Math.max(0, weaponFrames.length - 1))]
+      : undefined;
+  const usingFallback = (bodyIndex?.clip ?? "") === MAGE_WALK_CLIP;
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs tracking-[0.2em] text-[#c7a24a]">法师走路</p>
+      <p className="text-xs tracking-[0.2em] text-[#c7a24a]">
+        {ANIMATION_LABEL[animation]} · {COSMETIC_LABEL[cosmetic]}
+      </p>
       <div
-        className="flex min-h-96 items-center justify-center border border-[#3a2a18] bg-[#0c0a08]"
+        className="relative flex min-h-96 items-center justify-center border border-[#3a2a18] bg-[#0c0a08]"
         style={{
           backgroundImage:
             "linear-gradient(45deg,#1a140c 25%,transparent 25%),linear-gradient(-45deg,#1a140c 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a140c 75%),linear-gradient(-45deg,transparent 75%,#1a140c 75%)",
@@ -78,19 +111,29 @@ export function SpriteWalkPreview({
         }}
       >
         {current ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={current}
-            alt={`walk ${frame}`}
-            className="max-h-96 max-w-full object-contain"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={current} alt={`${animation} ${frame}`} className="max-h-96 max-w-full object-contain" />
+            {weapon ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={weapon}
+                alt={`${cosmetic} ${frame}`}
+                className="pointer-events-none absolute inset-0 m-auto max-h-96 max-w-full object-contain"
+              />
+            ) : null}
+          </>
         ) : (
-          <p className="max-w-[16rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">
-            还没有帧。生成图放到
+          <p className="max-w-[18rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">
+            还没有 W2 身体帧。放到
             <br />
-            `public/sprites/inbox/mage/walk-cycle/`
-            <br />
-            或拖进这条对话的输入框
+            {`public/sprites/inbox/base_animations/${animation}/`}
+            {cosmetic !== "unarmed" ? (
+              <>
+                <br />
+                {`武器层以后放 cosmetics/${cosmetic}/${animation}/`}
+              </>
+            ) : null}
           </p>
         )}
       </div>
@@ -116,9 +159,11 @@ export function SpriteWalkPreview({
         </div>
       ) : null}
       <p className="text-[11px] text-[#8a7a5a]">
-        {index?.frames.length
-          ? `${index.frames.length} 帧 · 当前 ${frame + 1}/${clipFrames.length} · 这些是同姿态试色，不是步态`
-          : "等待关键帧"}
+        {clipFrames.length
+          ? `${clipFrames.length} 帧身体 · 武器层 ${weaponFrames.length || "未到"} · 当前 ${frame + 1}/${clipFrames.length}${
+              usingFallback ? " · 现在还是同姿态试色" : ""
+            }`
+          : "等待 W2 身体帧"}
       </p>
       <div className="flex flex-wrap gap-2">
         <button

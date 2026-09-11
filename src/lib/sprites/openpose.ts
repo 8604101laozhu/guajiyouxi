@@ -1,4 +1,5 @@
-import { walkPose } from "./walk-cycle";
+import type { AnimationName } from "./catalog";
+import { cyclePose } from "./walk-cycle";
 
 export type Joint = { x: number; y: number };
 
@@ -10,10 +11,8 @@ function fk(origin: Joint, length: number, angleDeg: number): Joint {
   };
 }
 
-/** COCO-18 body joints for a 3/4 walk facing screen-left. */
-export function walkSkeleton(t: number, w: number, h: number): Joint[] {
-  const pose = walkPose(t);
-  const hip: Joint = { x: w * 0.52, y: h * 0.52 + pose.bob };
+function poseSkeleton(pose: ReturnType<typeof cyclePose>, w: number, h: number, collapse = 0): Joint[] {
+  const hip: Joint = { x: w * 0.52 - collapse * 36, y: h * 0.52 + pose.bob };
   const neck: Joint = { x: hip.x + 6, y: hip.y - 148 };
   const nose: Joint = { x: neck.x - 22, y: neck.y - 36 };
   const rSho: Joint = { x: neck.x - 46, y: neck.y + 16 };
@@ -33,6 +32,17 @@ export function walkSkeleton(t: number, w: number, h: number): Joint[] {
   const rEar: Joint = { x: nose.x + 10, y: nose.y + 6 };
   const lEar: Joint = { x: nose.x + 24, y: nose.y + 4 };
   return [nose, neck, rSho, rElb, rWri, lSho, lElb, lWri, rHip, rKne, rAnk, lHip, lKne, lAnk, rEye, lEye, rEar, lEar];
+}
+
+/** COCO-18 body joints for a 3/4 walk facing screen-left. */
+export function walkSkeleton(t: number, w: number, h: number): Joint[] {
+  return cycleSkeleton("walking", t, w, h);
+}
+
+export function cycleSkeleton(animation: AnimationName, t: number, w: number, h: number): Joint[] {
+  const pose = cyclePose(animation, t);
+  const collapse = animation === "death" ? Math.min(1, (((t % 1) + 1) % 1) / 0.72) : 0;
+  return poseSkeleton(pose, w, h, collapse);
 }
 
 export const OPENPOSE_LIMBS: [number, number][] = [

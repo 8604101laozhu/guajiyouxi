@@ -1,3 +1,5 @@
+import { allInboxClips } from "./catalog";
+
 export function numericFrameName(file: string): number | null {
   const match = file.match(/^(\d+)\.(png|webp|gif|jpe?g)$/i);
   if (!match) return null;
@@ -19,15 +21,14 @@ export function sliceDirection(frames: string[], framesPerDir: number, direction
 }
 
 export const SPRITE_INBOX = {
-  stills: "inbox/mage/stills",
-  walkCycle: "inbox/mage/walk-cycle",
-  hair: "inbox/mage/hair",
-  idle: "inbox/mage/idle",
-  attack: "inbox/mage/attack",
+  stills: "inbox/stills",
+  walking: "inbox/base_animations/walking",
+  attack: "inbox/base_animations/attack",
+  death: "inbox/base_animations/death",
 } as const;
 
-export const INBOX_CLIPS = Object.values(SPRITE_INBOX);
+export const INBOX_CLIPS = allInboxClips();
 
 export const MAGE_WALK_CLIP = "mage/walk";
-export const MAGE_WALK_CYCLE_CLIP = SPRITE_INBOX.walkCycle;
+export const MAGE_WALK_CYCLE_CLIP = SPRITE_INBOX.walking;
 

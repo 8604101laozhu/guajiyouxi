@@ -35,6 +35,7 @@ import { CampaignBench } from "./campaign-bench";
 import { DamageStudio } from "./damage-studio";
 import { qualityTint } from "./item-tooltip";
 import { ItemTooltip } from "./item-tooltip";
+import { cosmeticFromWeaponClass, type CosmeticName } from "@/lib/sprites/catalog";
 import { PaperDoll } from "./paper-doll";
 import { MageWalkStudio } from "./walk-guide";
 
@@ -148,6 +149,9 @@ export function GameClient() {
     return null;
   }, [selectedId, character.equipment, inventory]);
 
+  const equippedCosmetic = cosmeticFromWeaponClass(
+    character.equipment.mainHand ? getBase(character.equipment.mainHand.baseId).weaponClass : undefined,
+  );
   const gearMf = totalAttributes(character).stats.magicFind;
   const totalMf = gearMf + magicFind;
 
@@ -310,6 +314,30 @@ export function GameClient() {
     }
   }
 
+  function swapMainHandCosmetic(cosmetic: CosmeticName) {
+    if (cosmetic === "unarmed") {
+      if (character.equipment.mainHand) tryUnequip("mainHand");
+      return;
+    }
+    if (equippedCosmetic === cosmetic && character.equipment.mainHand) return;
+    const fromBag = inventory.find(
+      (item) => cosmeticFromWeaponClass(getBase(item.baseId).weaponClass) === cosmetic,
+    );
+    if (fromBag) {
+      tryEquip(fromBag, "mainHand");
+      return;
+    }
+    const { seed } = nextRng();
+    const item = generateItem({
+      rng: mulberry32(seed),
+      ilvl: areaLevel,
+      quality: "normal",
+      baseId: cosmetic === "staff" ? "short_staff" : "short_sword",
+      seed,
+    });
+    tryEquip(item, "mainHand");
+  }
+
   function discard(item: Item) {
     setInventory((prev) => prev.filter((entry) => entry.id !== item.id));
     const worn = Object.entries(character.equipment).find(([, wornItem]) => wornItem?.id === item.id);
@@ -352,13 +380,13 @@ export function GameClient() {
         <p className="text-xs tracking-[0.35em] text-[#c7a24a]">GUAJIYOUXI · 挂机游戏</p>
         <h1 className="text-2xl font-semibold text-[#f0ead8] sm:text-3xl">暗黑 2 掉落 · 手游关卡梯度</h1>
         <p className="max-w-3xl text-sm leading-6 text-[#cfc3a6]">
-          单件怎么出还是暗黑 2：TC 抽基底，ItemRatio 走暗金→套装→稀有→魔法。关卡血量、推荐战力、抽次和空箱按现在挂机手游的章节难度抬。左侧可预览法师走路帧。
+          单件怎么出还是暗黑 2：TC 抽基底，ItemRatio 走暗金→套装→稀有→魔法。关卡血量、推荐战力、抽次和空箱按现在挂机手游的章节难度抬。左侧动作循环：走路 / 攻击 / 死亡共用一条 W2，换武器只换 W4 层。
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <section id="mage-walk" className="border border-[#6a5428] bg-[#120e0a] p-4">
-          <MageWalkStudio />
+          <MageWalkStudio cosmetic={equippedCosmetic} onCosmetic={swapMainHandCosmetic} />
         </section>
         <CampaignBench
           character={character}
@@ -441,6 +469,7 @@ export function GameClient() {
             character={character}
             selectedId={selectedId}
             onSelect={(item) => setSelectedId(item.id)}
+            onCosmetic={swapMainHandCosmetic}
           />
           <div className="mt-4 space-y-2">
             <Field label={`等级 ${character.level}`}>

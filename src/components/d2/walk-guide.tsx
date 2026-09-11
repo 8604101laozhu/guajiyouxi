@@ -1,21 +1,38 @@
 "use client";
 
 import { SpriteWalkPreview } from "./sprite-walk";
-import { OPENPOSE_LIMB_COLORS, OPENPOSE_LIMBS, walkSkeleton } from "@/lib/sprites/openpose";
+import {
+  ANIMATION_LABEL,
+  ANIMATION_NAMES,
+  COSMETIC_LABEL,
+  COSMETIC_NAMES,
+  type AnimationName,
+  type CosmeticName,
+} from "@/lib/sprites/catalog";
+import { OPENPOSE_LIMB_COLORS, OPENPOSE_LIMBS, cycleSkeleton } from "@/lib/sprites/openpose";
 import {
   DEFAULT_SECONDARY,
-  fillWalkPrompt,
+  fillW2Prompt,
   genderLabel,
+  w2DriverKnobs,
   type GenderId,
 } from "@/lib/sprites/pipeline";
 import { chestSecondary, hairSecondary, strandPoints } from "@/lib/sprites/secondary";
+import { weaponPolyline } from "@/lib/sprites/weapon";
 import { cn } from "@/lib/utils";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const TEXTURE = "/sprites/mage/rig/texture.png";
 
-export function MageWalkStudio() {
+export function MageWalkStudio({
+  cosmetic,
+  onCosmetic,
+}: {
+  cosmetic: CosmeticName;
+  onCosmetic: (cosmetic: CosmeticName) => void;
+}) {
   const [mode, setMode] = useState<"cycle" | "stills">("cycle");
+  const [animation, setAnimation] = useState<AnimationName>("walking");
   const [gender, setGender] = useState<GenderId>("female");
   const [playing, setPlaying] = useState(true);
   const [fps, setFps] = useState(10);
@@ -27,14 +44,13 @@ export function MageWalkStudio() {
   const textureRef = useRef<HTMLImageElement | null>(null);
   const [ready, setReady] = useState(0);
 
-  const walkPrompt = useMemo(() => {
-    if (gender === "female" && chestAmt <= 0.05) {
-      return fillWalkPrompt("female", {
-        CHEST: "- no chest bounce; keep the bust locked to the torso",
-      });
-    }
-    return fillWalkPrompt(gender);
-  }, [gender, chestAmt]);
+  const w2Prompt = useMemo(() => {
+    const slots =
+      gender === "female" && chestAmt <= 0.05
+        ? { CHEST: "- no chest bounce; keep the bust locked to the torso" }
+        : undefined;
+    return `${w2DriverKnobs(animation)}\n\n${fillW2Prompt(gender, animation, slots)}`;
+  }, [gender, chestAmt, animation]);
 
   useEffect(() => {
     const defaults = DEFAULT_SECONDARY[gender];
@@ -52,7 +68,7 @@ export function MageWalkStudio() {
   }, []);
 
   useEffect(() => {
-    if (!playing) return;
+    if (!playing || mode !== "cycle") return;
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
@@ -63,7 +79,7 @@ export function MageWalkStudio() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing, fps]);
+  }, [playing, fps, mode]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -91,7 +107,7 @@ export function MageWalkStudio() {
     }
 
     const t = phase / 8;
-    const joints = walkSkeleton(t, sw, sh).map((p) => ({ x: p.x + ox, y: p.y + oy }));
+    const joints = cycleSkeleton(animation, t, sw, sh).map((p) => ({ x: p.x + ox, y: p.y + oy }));
     ctx.lineCap = "round";
     ctx.lineWidth = 6;
     OPENPOSE_LIMBS.forEach(([a, b], i) => {
@@ -110,7 +126,23 @@ export function MageWalkStudio() {
       ctx.fill();
     });
 
-    const hair = hairSecondary(t, hairAmt);
+    const glyph = weaponPolyline(cosmetic, joints[4], joints[3]);
+    if (glyph) {
+      ctx.strokeStyle = cosmetic === "staff" ? "#c7a24a" : "#d8d0c0";
+      ctx.lineWidth = cosmetic === "staff" ? 4 : 3;
+      ctx.beginPath();
+      ctx.moveTo(glyph[0].x, glyph[0].y);
+      ctx.lineTo(glyph[1].x, glyph[1].y);
+      ctx.stroke();
+      if (cosmetic === "staff") {
+        ctx.fillStyle = "#c7a24a";
+        ctx.beginPath();
+        ctx.arc(glyph[1].x, glyph[1].y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    const hair = hairSecondary(t, animation === "death" ? hairAmt * 0.4 : hairAmt);
     const neck = joints[1];
     const roots = [
       { x: neck.x + 10, y: neck.y - 28, len: 92, sign: 1 },
@@ -127,8 +159,8 @@ export function MageWalkStudio() {
       ctx.stroke();
     }
 
-    const chest = chestSecondary(t, gender === "female" ? chestAmt : 0);
-    if (gender === "female" && chestAmt > 0.05) {
+    const chest = chestSecondary(t, gender === "female" && animation === "walking" ? chestAmt : 0);
+    if (gender === "female" && chestAmt > 0.05 && animation === "walking") {
       const mid = {
         x: (joints[2].x + joints[5].x) / 2 + 2,
         y: (joints[2].y + joints[5].y) / 2 + 34 + chest.y,
@@ -144,21 +176,14 @@ export function MageWalkStudio() {
       ctx.fill();
       ctx.stroke();
     }
-  }, [phase, ready, hairAmt, chestAmt, gender]);
-
-  if (mode === "stills") {
-    return (
-      <div className="flex flex-col gap-2">
-        <ModeToggle mode={mode} onMode={setMode} />
-        <SpriteWalkPreview />
-      </div>
-    );
-  }
+  }, [phase, ready, hairAmt, chestAmt, gender, animation, cosmetic]);
 
   return (
     <div className="flex flex-col gap-2">
       <ModeToggle mode={mode} onMode={setMode} />
-      <p className="text-xs tracking-[0.2em] text-[#c7a24a]">法师走路 · {genderLabel(gender)}管线</p>
+      <p className="text-xs tracking-[0.2em] text-[#c7a24a]">
+        动作循环 · {genderLabel(gender)} · {ANIMATION_LABEL[animation]} · {COSMETIC_LABEL[cosmetic]}
+      </p>
       <div className="flex gap-1">
         {(["female", "male"] as const).map((id) => (
           <button
@@ -174,73 +199,112 @@ export function MageWalkStudio() {
           </button>
         ))}
       </div>
-      <div className="border border-[#3a2a18] bg-[#0c0a08]">
-        <canvas ref={canvasRef} width={360} height={480} className="mx-auto block h-auto w-full max-h-[28rem]" />
+      <div className="flex flex-wrap gap-1">
+        {ANIMATION_NAMES.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "h-7 border px-2 text-[11px]",
+              animation === id ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#3a2a18] text-[#8a7a5a]",
+            )}
+            onClick={() => setAnimation(id)}
+          >
+            {ANIMATION_LABEL[id]}
+          </button>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {COSMETIC_NAMES.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "h-7 border px-2 text-[11px]",
+              cosmetic === id ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#3a2a18] text-[#8a7a5a]",
+            )}
+            onClick={() => onCosmetic(id)}
+          >
+            {COSMETIC_LABEL[id]}
+          </button>
+        ))}
       </div>
       <p className="text-[11px] leading-5 text-[#8a7a5a]">
-        生成图统一收进 <span className="text-[#cfc3a6]">public/sprites/inbox/</span>
-        ：走路循环进 mage/walk-cycle，立绘进 mage/stills，头发层进 mage/hair。文件名 0.png、1.png… 拖进这条对话我也会拷到对应子文件夹。
+        走路 / 攻击 / 死亡共用一条 W2，只换 <span className="text-[#cfc3a6]">ANIMATION_NAME</span>
+        。换武器走 W4/W5 的 <span className="text-[#cfc3a6]">COSMETIC_NAME</span>
+        ，只换武器层，不重出身体。16GB 先跑空手身体；武器目录已经建成{" "}
+        <span className="text-[#cfc3a6]">cosmetics/{"{staff|sword}"}/{"{walking|attack|death}"}/</span>
+        ，以后有显存再跑 W4。
       </p>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={cn(
-            "h-7 border px-2 text-xs",
-            playing ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#6a5428] text-[#cfc3a6]",
-          )}
-          onClick={() => setPlaying((v) => !v)}
-        >
-          {playing ? "暂停" : "播放"}
-        </button>
-        <label className="flex items-center gap-1 text-[11px] text-[#8a7a5a]">
-          {fps} fps
-          <input
-            type="range"
-            min={4}
-            max={16}
-            value={fps}
-            onChange={(event) => setFps(Number(event.target.value))}
-            className="w-20 accent-[#c7a24a]"
-          />
-        </label>
-        <span className="text-[11px] text-[#8a7a5a]">帧 {Math.floor(phase) + 1}/8</span>
-      </div>
-      <label className="flex items-center gap-2 text-[11px] text-[#8a7a5a]">
-        头发 {Math.round(hairAmt * 100)}
-        <input
-          type="range"
-          min={0}
-          max={120}
-          value={Math.round(hairAmt * 100)}
-          onChange={(event) => setHairAmt(Number(event.target.value) / 100)}
-          className="w-28 accent-[#c7a24a]"
-        />
-      </label>
-      <label className={cn("flex items-center gap-2 text-[11px]", gender === "male" ? "text-[#5a4e3a]" : "text-[#8a7a5a]")}>
-        胸部 {gender === "male" ? "男管线关闭" : Math.round(chestAmt * 100)}
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round(chestAmt * 100)}
-          disabled={gender === "male"}
-          onChange={(event) => setChestAmt(Number(event.target.value) / 100)}
-          className="w-28 accent-[#c7a24a]"
-        />
-      </label>
+      {mode === "stills" ? (
+        <SpriteWalkPreview animation={animation} cosmetic={cosmetic} />
+      ) : (
+        <>
+          <div className="border border-[#3a2a18] bg-[#0c0a08]">
+            <canvas ref={canvasRef} width={360} height={480} className="mx-auto block h-auto w-full max-h-[28rem]" />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={cn(
+                "h-7 border px-2 text-xs",
+                playing ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#6a5428] text-[#cfc3a6]",
+              )}
+              onClick={() => setPlaying((v) => !v)}
+            >
+              {playing ? "暂停" : "播放"}
+            </button>
+            <label className="flex items-center gap-1 text-[11px] text-[#8a7a5a]">
+              {fps} fps
+              <input
+                type="range"
+                min={4}
+                max={16}
+                value={fps}
+                onChange={(event) => setFps(Number(event.target.value))}
+                className="w-20 accent-[#c7a24a]"
+              />
+            </label>
+            <span className="text-[11px] text-[#8a7a5a]">帧 {Math.floor(phase) + 1}/8</span>
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-[#8a7a5a]">
+            头发 {Math.round(hairAmt * 100)}
+            <input
+              type="range"
+              min={0}
+              max={120}
+              value={Math.round(hairAmt * 100)}
+              onChange={(event) => setHairAmt(Number(event.target.value) / 100)}
+              className="w-28 accent-[#c7a24a]"
+            />
+          </label>
+          <label className={cn("flex items-center gap-2 text-[11px]", gender === "male" ? "text-[#5a4e3a]" : "text-[#8a7a5a]")}>
+            胸部 {gender === "male" ? "男管线关闭" : Math.round(chestAmt * 100)}
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(chestAmt * 100)}
+              disabled={gender === "male"}
+              onChange={(event) => setChestAmt(Number(event.target.value) / 100)}
+              className="w-28 accent-[#c7a24a]"
+            />
+          </label>
+        </>
+      )}
       <button
         type="button"
         className="h-7 self-start border border-[#6a5428] px-2 text-[11px] text-[#cfc3a6]"
         onClick={async () => {
-          await navigator.clipboard.writeText(walkPrompt);
+          await navigator.clipboard.writeText(w2Prompt);
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1400);
         }}
       >
-        {copied ? "已复制 W2 提示词" : "复制当前管线提示词"}
+        {copied ? "已复制 W2 提示词" : `复制 W2 · ${ANIMATION_LABEL[animation]}`}
       </button>
       <pre className="max-h-28 overflow-auto whitespace-pre-wrap border border-[#3a2a18] bg-[#0c0a08] p-2 text-[10px] leading-4 text-[#8a7a5a]">
-        {walkPrompt}
+        {w2Prompt}
       </pre>
     </div>
   );
@@ -254,14 +318,14 @@ function ModeToggle({ mode, onMode }: { mode: "cycle" | "stills"; onMode: (mode:
         className={cn("h-7 border px-2 text-[11px]", mode === "cycle" ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#3a2a18] text-[#8a7a5a]")}
         onClick={() => onMode("cycle")}
       >
-        步态循环
+        动作循环
       </button>
       <button
         type="button"
         className={cn("h-7 border px-2 text-[11px]", mode === "stills" ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#3a2a18] text-[#8a7a5a]")}
         onClick={() => onMode("stills")}
       >
-        炼丹立绘
+        炼丹产出
       </button>
     </div>
   );

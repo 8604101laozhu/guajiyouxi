@@ -1,23 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { fillWalkPrompt, GENDER_SLOTS } from "./pipeline";
+import { fillW2Prompt, GENDER_SLOTS, w2DriverKnobs } from "./pipeline";
 import { chestSecondary, hairSecondary } from "./secondary";
 
 describe("gender prompt swap", () => {
-  it("keeps one template and only swaps gender slots", () => {
-    const f = fillWalkPrompt("female");
-    const m = fillWalkPrompt("male");
+  it("keeps one W2 template and only swaps gender slots", () => {
+    const f = fillW2Prompt("female", "walking");
+    const m = fillW2Prompt("male", "walking");
     expect(f).toContain("in-place walk loop");
     expect(m).toContain("in-place walk loop");
     expect(f).toContain("adult woman");
     expect(m).toContain("adult man");
     expect(f).toContain("chest bounce");
     expect(m).toContain("no chest bounce");
+    expect(f).toContain("unarmed");
     expect(f).not.toContain("{{");
-    expect(m).not.toContain("{{");
+  });
+
+  it("switches walk / attack / death by ANIMATION_NAME only", () => {
+    const walk = fillW2Prompt("female", "walking");
+    const atk = fillW2Prompt("female", "attack");
+    const death = fillW2Prompt("female", "death");
+    expect(walk).toContain("walking cycle");
+    expect(atk).toContain("attack cycle");
+    expect(death).toContain("death cycle");
+    expect(atk).toContain("adult woman");
+    expect(death).toContain("no extra characters");
+  });
+
+  it("keeps W2 body unarmed and defers weapons to W4 knobs", () => {
+    expect(w2DriverKnobs("attack")).toContain("ANIMATION_NAME=attack");
+    expect(w2DriverKnobs("death")).toContain("W2 body only");
   });
 
   it("lets a female character omit chest bounce via slot override", () => {
-    const f = fillWalkPrompt("female", { CHEST: GENDER_SLOTS.male.CHEST });
+    const f = fillW2Prompt("female", "walking", { CHEST: GENDER_SLOTS.male.CHEST });
     expect(f).toContain("adult woman");
     expect(f).toContain("no chest bounce");
   });

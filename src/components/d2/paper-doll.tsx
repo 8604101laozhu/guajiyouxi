@@ -1,6 +1,12 @@
 "use client";
 
 import { getBase, offHandBlocked, PAPER_DOLL, SLOT_BY_ID, type Character, type Item, type SlotId } from "@/lib/d2";
+import {
+  COSMETIC_LABEL,
+  COSMETIC_NAMES,
+  cosmeticFromWeaponClass,
+  type CosmeticName,
+} from "@/lib/sprites/catalog";
 import { cn } from "@/lib/utils";
 import { qualityTint } from "./item-tooltip";
 
@@ -8,12 +14,17 @@ export function PaperDoll({
   character,
   selectedId,
   onSelect,
+  onCosmetic,
 }: {
   character: Character;
   selectedId: string | null;
   onSelect: (item: Item, slot: SlotId) => void;
+  onCosmetic: (cosmetic: CosmeticName) => void;
 }) {
   const blocked = offHandBlocked(character);
+  const cosmetic = cosmeticFromWeaponClass(
+    character.equipment.mainHand ? getBase(character.equipment.mainHand.baseId).weaponClass : undefined,
+  );
   return (
     <div className="flex flex-col items-center gap-2">
       {PAPER_DOLL.map((row, rowIndex) => (
@@ -59,6 +70,49 @@ export function PaperDoll({
           })}
         </div>
       ))}
+      <DollFigure cosmetic={cosmetic} />
+      <p className="text-[11px] text-[#8a7a5a]">换武器只换主手层，身体还是同一套 W2。</p>
+      <div className="flex flex-wrap justify-center gap-1">
+        {COSMETIC_NAMES.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={cn(
+              "h-7 border px-2 text-[11px]",
+              cosmetic === id ? "border-[#c7a24a] text-[#c7a24a]" : "border-[#6a5428] text-[#cfc3a6]",
+            )}
+            onClick={() => onCosmetic(id)}
+          >
+            {COSMETIC_LABEL[id]}
+          </button>
+        ))}
+      </div>
     </div>
+  );
+}
+
+function DollFigure({ cosmetic }: { cosmetic: CosmeticName }) {
+  return (
+    <svg viewBox="0 0 120 168" className="h-40 w-[7.5rem]" aria-label={`纸娃娃 ${COSMETIC_LABEL[cosmetic]}`}>
+      <ellipse cx="62" cy="158" rx="28" ry="6" fill="#1a140c" />
+      <circle cx="58" cy="28" r="16" fill="#2a1c10" stroke="#c7a24a" strokeWidth="1.4" />
+      <path d="M58 44 L46 86 L50 128 L70 128 L74 86 Z" fill="#24180f" stroke="#c7a24a" strokeWidth="1.3" />
+      <path d="M50 56 L22 90" fill="none" stroke="#8a7a5a" strokeWidth="3" strokeLinecap="round" />
+      <path d="M70 56 L94 86" fill="none" stroke="#8a7a5a" strokeWidth="3" strokeLinecap="round" />
+      <path d="M50 128 L42 154" fill="none" stroke="#8a7a5a" strokeWidth="3.2" strokeLinecap="round" />
+      <path d="M70 128 L80 154" fill="none" stroke="#8a7a5a" strokeWidth="3.2" strokeLinecap="round" />
+      {cosmetic === "staff" ? (
+        <>
+          <line x1="18" y1="36" x2="30" y2="148" stroke="#c7a24a" strokeWidth="3" strokeLinecap="round" />
+          <circle cx="16" cy="30" r="6" fill="none" stroke="#c7a24a" strokeWidth="2" />
+        </>
+      ) : null}
+      {cosmetic === "sword" ? (
+        <>
+          <line x1="20" y1="58" x2="8" y2="118" stroke="#d8d0c0" strokeWidth="2.4" strokeLinecap="round" />
+          <line x1="12" y1="72" x2="26" y2="66" stroke="#c7a24a" strokeWidth="2" />
+        </>
+      ) : null}
+    </svg>
   );
 }

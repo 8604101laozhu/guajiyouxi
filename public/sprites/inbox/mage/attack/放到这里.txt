@@ -1,1 +1,2 @@
-攻击帧放这里：0.png 1.png …
+旧路径。攻击身体请放到 public/sprites/inbox/base_animations/attack/
+武器层放到 public/sprites/inbox/cosmetics/{staff|sword}/attack/

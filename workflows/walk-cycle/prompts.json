@@ -1,6 +1,13 @@
 {
-  "template": "WALK_I2V",
-  "note": "Same ComfyUI graph for all characters. Swap gender slots only — do not train a second model.",
+  "template": "W2_I2V",
+  "note": "Same ComfyUI graph for walking, attack, and death. Swap ANIMATION_NAME only. Weapons are a later W4 cosmetic layer — do not train a second doll model.",
+  "animation_names": ["walking", "attack", "death"],
+  "cosmetic_names": ["staff", "sword"],
+  "motion": {
+    "walking": "- in-place walk loop\n- alternating left/right foot steps\n- clear arm swing opposite the legs\n- subtle vertical bob\n- feet stay visible and plant, then lift",
+    "attack": "- in-place attack cycle, one strike or cast then return to idle\n- arms and torso drive the hit\n- feet stay planted, no locomotion",
+    "death": "- in-place death collapse, then hold the last pose\n- no get-up, no extra characters"
+  },
   "slots": {
     "female": {
       "BODY": "The character is an adult woman. Keep a feminine silhouette. Clothing stays fully on.",

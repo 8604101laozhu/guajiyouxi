@@ -1,2 +1,1 @@
-立绘试色放这里：0.png 1.png …
-同一姿势、不同底的参考图。
+旧路径。立绘请放到 public/sprites/inbox/stills/
