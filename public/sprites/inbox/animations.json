@@ -1,0 +1,13 @@
+{
+  "pipeline": "mor-o/comfyui-2d-character-pipeline",
+  "w2": {
+    "animation_names": ["walking", "attack", "death"],
+    "output": "inbox/base_animations/{ANIMATION_NAME}",
+    "note": "Same graph. Only ANIMATION_NAME changes. Body is unarmed. 16GB: run this first."
+  },
+  "w4": {
+    "cosmetic_names": ["staff", "sword"],
+    "output": "inbox/cosmetics/{COSMETIC_NAME}/{ANIMATION_NAME}",
+    "note": "Weapon layer only. Do not regenerate the body. Skip on 16GB; run later."
+  }
+}

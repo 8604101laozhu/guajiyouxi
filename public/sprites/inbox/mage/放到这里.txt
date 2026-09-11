@@ -1,0 +1,7 @@
+旧路径。新图请放到：
+
+- 走路/攻击/死亡身体：public/sprites/inbox/base_animations/{walking|attack|death}/
+- 法杖/剑层：public/sprites/inbox/cosmetics/{staff|sword}/{walking|attack|death}/
+- 立绘：public/sprites/inbox/stills/
+
+同一条 W2，只换 ANIMATION_NAME。不要单独做攻击/死亡工作流。

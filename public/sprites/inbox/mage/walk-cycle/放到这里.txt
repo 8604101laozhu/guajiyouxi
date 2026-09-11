@@ -1,0 +1,1 @@
+旧路径。走路循环请放到 public/sprites/inbox/base_animations/walking/

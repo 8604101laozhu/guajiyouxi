@@ -1,0 +1,1 @@
+旧路径。立绘请放到 public/sprites/inbox/stills/
