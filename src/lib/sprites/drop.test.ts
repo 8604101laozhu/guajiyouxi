@@ -19,6 +19,15 @@ describe("drop folder routing", () => {
     expect(resolveDropRel("法杖/走路/00.png")?.clip).toBe("inbox/cosmetics/staff/walking");
     expect(resolveDropRel("剑/死亡/1.png")?.clip).toBe("inbox/cosmetics/sword/death");
     expect(resolveDropRel("立绘/2.jpg")?.clip).toBe("inbox/stills");
+    expect(resolveDropRel("背景/1/loop.png")).toEqual({
+      clip: "inbox/backgrounds/chapter-1",
+      index: null,
+      ext: "png",
+      destName: "loop.png",
+    });
+    expect(resolveDropRel("背景/鲜血荒地/sky.png")?.clip).toBe("inbox/backgrounds/chapter-1");
+    expect(resolveDropRel("背景/10/地面.png")?.destName).toBe("ground.png");
+    expect(resolveDropRel("bg-2-loop.png")?.clip).toBe("inbox/backgrounds/chapter-2");
   });
 
   it("accepts a flat dump with prefixes", () => {

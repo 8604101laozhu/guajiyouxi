@@ -1,0 +1,2 @@
+第 1 章鲜血荒地。文件名 loop.png（或 sky.png / mid.png / ground.png）
+3840×720 PNG，左右无缝，不要画人。

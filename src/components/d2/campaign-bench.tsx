@@ -163,7 +163,7 @@ export function CampaignBench({
           )}
         </p>
       ) : (
-        <p className="text-sm text-[#8a7a5a]">选难度和关卡后清剿。空箱是暗黑 2 的 NoDrop；地狱和首领会多抽几次。</p>
+        点「清剿本关」会先在上方横板里走路，背景循环，直到把这关怪物打完才结算掉落。第 10 关是首领。挂机 10 波仍直接结算。
       )}
     </section>
   );

@@ -22,6 +22,41 @@ const COS_ALIAS = {
 
 const STILL_ALIAS = new Set(["stills", "still", "立绘"]);
 
+const BG_ROOT = new Set(["背景", "backgrounds", "background", "bg"]);
+
+const CHAPTER_NAMES = {
+  鲜血荒地: 1,
+  冰冷之原: 2,
+  地下墓穴: 3,
+  鲁高因下水道: 4,
+  干燥高地: 5,
+  "塔·拉夏古墓": 6,
+  蜘蛛森林: 7,
+  库拉斯特集市: 8,
+  平原要塞: 9,
+  混沌避难所: 10,
+  冰冻高原: 11,
+  世界之石要塞: 12,
+};
+
+const BG_LAYERS = {
+  sky: "sky",
+  far: "sky",
+  天空: "sky",
+  远景: "sky",
+  mid: "mid",
+  middle: "mid",
+  中景: "mid",
+  ground: "ground",
+  near: "ground",
+  地面: "ground",
+  近景: "ground",
+  loop: "loop",
+  strip: "loop",
+  循环: "loop",
+  整图: "loop",
+};
+
 export const DROP_FOLDERS = [
   { folder: "走路", clip: "inbox/base_animations/walking" },
   { folder: "攻击", clip: "inbox/base_animations/attack" },
@@ -33,6 +68,18 @@ export const DROP_FOLDERS = [
   { folder: "剑/走路", clip: "inbox/cosmetics/sword/walking" },
   { folder: "剑/攻击", clip: "inbox/cosmetics/sword/attack" },
   { folder: "剑/死亡", clip: "inbox/cosmetics/sword/death" },
+  { folder: "背景/1", clip: "inbox/backgrounds/chapter-1" },
+  { folder: "背景/2", clip: "inbox/backgrounds/chapter-2" },
+  { folder: "背景/3", clip: "inbox/backgrounds/chapter-3" },
+  { folder: "背景/4", clip: "inbox/backgrounds/chapter-4" },
+  { folder: "背景/5", clip: "inbox/backgrounds/chapter-5" },
+  { folder: "背景/6", clip: "inbox/backgrounds/chapter-6" },
+  { folder: "背景/7", clip: "inbox/backgrounds/chapter-7" },
+  { folder: "背景/8", clip: "inbox/backgrounds/chapter-8" },
+  { folder: "背景/9", clip: "inbox/backgrounds/chapter-9" },
+  { folder: "背景/10", clip: "inbox/backgrounds/chapter-10" },
+  { folder: "背景/11", clip: "inbox/backgrounds/chapter-11" },
+  { folder: "背景/12", clip: "inbox/backgrounds/chapter-12" },
 ];
 
 export function toPosix(rel) {
@@ -98,6 +145,36 @@ function hitFromTokens(tokens, index, ext) {
   return null;
 }
 
+function mapChapter(token) {
+  if (!token) return null;
+  if (CHAPTER_NAMES[token]) return CHAPTER_NAMES[token];
+  const folded = fold(token).replace(/^chapter-/, "").replace(/^ch-?/, "");
+  if (CHAPTER_NAMES[folded]) return CHAPTER_NAMES[folded];
+  const n = Number(folded);
+  if (Number.isInteger(n) && n >= 1 && n <= 12) return n;
+  return null;
+}
+
+function mapLayer(stem, index) {
+  const folded = fold(stem);
+  if (BG_LAYERS[stem]) return BG_LAYERS[stem];
+  if (BG_LAYERS[folded]) return BG_LAYERS[folded];
+  if (index === 0) return "loop";
+  if (index === 1) return "mid";
+  if (index === 2) return "ground";
+  return "loop";
+}
+
+function backgroundHit(chapter, stem, index, ext) {
+  if (!chapter) return null;
+  return {
+    clip: `inbox/backgrounds/chapter-${chapter}`,
+    index: null,
+    ext,
+    destName: `${mapLayer(stem, index)}.${ext}`,
+  };
+}
+
 function hitFromPrefix(prefix, index, ext) {
   const folded = fold(prefix);
   if (!folded) return null;
@@ -121,6 +198,23 @@ export function resolveDropRel(rel) {
   if (!file) return null;
   const parsed = parseFile(file);
   if (!parsed) return null;
+  if (bits[0] && BG_ROOT.has(bits[0])) {
+    const chapter = mapChapter(bits[1] ?? parsed.prefix);
+    const stem = bits.length >= 3 ? bits[2] : parsed.prefix;
+    const hit = backgroundHit(chapter, stem, parsed.index, parsed.ext);
+    if (hit) return hit;
+  }
+  if (bits.length === 0) {
+    const bgPrefix = parsed.prefix.match(/^(背景|bg|backgrounds?)[-_]?(.+)$/i);
+    if (bgPrefix) {
+      const rest = bgPrefix[2];
+      const parts = rest.split(/[-_/]/).filter(Boolean);
+      const chapter = mapChapter(parts[0] ?? "");
+      const stem = parts[1] ?? parsed.prefix;
+      const hit = backgroundHit(chapter, stem, parsed.index, parsed.ext);
+      if (hit) return hit;
+    }
+  }
   const fromFolders = hitFromTokens(bits, parsed.index, parsed.ext);
   if (fromFolders) return fromFolders;
   if (bits.length === 0) {
@@ -212,7 +306,7 @@ export async function ingestDrop(dropDir, inboxRoot) {
     if (!hit) continue;
     const names = await listing(hit.clip);
     const index = hit.index ?? nextFrameIndex(names);
-    const destName = destFrameName(index, hit.ext);
+    const destName = hit.destName ?? destFrameName(index, hit.ext);
     const destDir = path.join(inboxRoot, hit.clip);
     await mkdir(destDir, { recursive: true });
     const dest = path.join(destDir, destName);

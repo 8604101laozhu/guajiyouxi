@@ -12,6 +12,15 @@ export function sortNumericFrames(files: string[]): string[] {
     .sort((a, b) => (numericFrameName(a) ?? 0) - (numericFrameName(b) ?? 0));
 }
 
+export function listClipImages(files: string[]): string[] {
+  const images = files.filter((file) => /\.(png|webp|gif|jpe?g)$/i.test(file) && !file.startsWith("."));
+  const numbered = sortNumericFrames(images);
+  const named = images
+    .filter((file) => numericFrameName(file) === null)
+    .sort((a, b) => a.localeCompare(b));
+  return [...numbered, ...named];
+}
+
 export function sliceDirection(frames: string[], framesPerDir: number, direction: number): string[] {
   if (framesPerDir <= 0 || framesPerDir >= frames.length) return frames;
   const dirs = Math.floor(frames.length / framesPerDir);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
-import { sortNumericFrames } from "@/lib/sprites/clip";
+import { listClipImages } from "@/lib/sprites/clip";
 
 export async function GET(request: Request) {
   const clip = new URL(request.url).searchParams.get("clip") ?? "mage/walk";
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const dir = path.join(process.cwd(), "public", "sprites", clip);
   try {
     const names = await readdir(dir);
-    const files = sortNumericFrames(names);
+    const files = listClipImages(names);
     const frames = await Promise.all(
       files.map(async (file) => {
         const info = await stat(path.join(dir, file));

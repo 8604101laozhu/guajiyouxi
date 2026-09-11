@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { INBOX_CLIPS, numericFrameName, sliceDirection, sortNumericFrames } from "./clip";
+import { INBOX_CLIPS, listClipImages, numericFrameName, sliceDirection, sortNumericFrames } from "./clip";
 
 describe("numeric sprite clips", () => {
   it("sorts 0-10 in numeric order not lexicographic", () => {
@@ -11,8 +11,13 @@ describe("numeric sprite clips", () => {
     ]);
   });
 
-  it("ignores non-numeric names", () => {
-    expect(sortNumericFrames(["walk.png", "3.PNG", "notes.txt"])).toEqual(["3.PNG"]);
+  it("keeps named background layers alongside numbered frames", () => {
+    expect(listClipImages(["loop.png", "2.png", "sky.png", "notes.txt", "0.png"])).toEqual([
+      "0.png",
+      "2.png",
+      "loop.png",
+      "sky.png",
+    ]);
   });
 
   it("slices a four-direction strip", () => {

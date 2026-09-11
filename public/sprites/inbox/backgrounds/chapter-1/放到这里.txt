@@ -1,0 +1,2 @@
+第 1 章横板循环背景：loop.png 或 sky.png / mid.png / ground.png
+3840×720，左右无缝。

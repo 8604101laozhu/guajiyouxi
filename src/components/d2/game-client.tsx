@@ -37,6 +37,7 @@ import { qualityTint } from "./item-tooltip";
 import { ItemTooltip } from "./item-tooltip";
 import { cosmeticFromWeaponClass, type CosmeticName } from "@/lib/sprites/catalog";
 import { PaperDoll } from "./paper-doll";
+import { StageRunway } from "./stage-runway";
 import { MageWalkStudio } from "./walk-guide";
 
 const STORAGE_KEY = "guajiyouxi-v1";
@@ -101,6 +102,7 @@ export function GameClient() {
   const [notice, setNotice] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [seedTick, setSeedTick] = useState(1);
+  const [runToken, setRunToken] = useState(0);
 
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- hydrate from localStorage after mount */
@@ -218,6 +220,10 @@ export function GameClient() {
       setSelectedId(result.items[0]?.id ?? selectedId);
     }
     flash(summary ?? `${result.reason} · 金币 +${result.gold} · 装备 ${result.items.length} · 空箱 ${result.noDrops}/${result.picks}`);
+  }
+
+  function startStageRun() {
+    setRunToken((n) => n + 1);
   }
 
   function runFarm() {
@@ -390,6 +396,16 @@ export function GameClient() {
         </p>
       </header>
 
+      <StageRunway
+        chapter={chapter}
+        stage={stage}
+        difficulty={difficulty}
+        character={character}
+        cosmetic={equippedCosmetic}
+        startToken={runToken}
+        onComplete={runFarm}
+      />
+
       <div className="grid gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)]">
         <section id="mage-walk" className="border border-[#6a5428] bg-[#120e0a] p-4">
           <MageWalkStudio cosmetic={equippedCosmetic} onCosmetic={swapMainHandCosmetic} />
@@ -407,7 +423,7 @@ export function GameClient() {
           onChapter={(n) => selectStage(n, stage, difficulty)}
           onStage={(n) => selectStage(chapter, n, difficulty)}
           onDifficulty={(d) => selectStage(chapter, stage, d)}
-          onFarm={runFarm}
+          onFarm={startStageRun}
           onFarmMany={runFarmMany}
         />
       </div>

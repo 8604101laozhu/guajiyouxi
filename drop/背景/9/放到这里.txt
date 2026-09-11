@@ -1,0 +1,1 @@
+横板背景。loop.png 或 sky.png / mid.png / ground.png。3840×720，左右无缝，不要画人。
