@@ -328,10 +328,11 @@ function DropHint() {
 
   return (
     <div className="border border-[#3a2a18] bg-[#0c0a08] p-2 text-[11px] leading-5 text-[#8a7a5a]">
-      <p className="text-[10px] tracking-[0.2em] text-[#c7a24a]">投放文件夹 · 不用拖进对话</p>
+      <p className="text-[10px] tracking-[0.2em] text-[#c7a24a]">怎么把图给我</p>
       <p className="mt-1">
-        云端读不到 D 盘。本机打开仓库里的 <span className="text-[#cfc3a6]">drop/走路</span>，或双击{" "}
-        <span className="text-[#cfc3a6]">投放.cmd</span>。图会进 inbox 并 git push。
+        你在自己电脑炼丹，我看不见 D 盘。把工程放到炼丹这台电脑后：打开{" "}
+        <span className="text-[#cfc3a6]">drop\走路</span>，把 png 丢进去，再双击{" "}
+        <span className="text-[#cfc3a6]">投放.cmd</span>。完了跟我说「图放好了」。
       </p>
       <p className="mt-1 text-[#cfc3a6]">{info?.dropDir ?? "drop/"}</p>
       <button
