@@ -1,22 +1,52 @@
 @echo off
 cd /d "%~dp0"
-setlocal EnableExtensions
-set COPIED=0
 
-call :push_kind minion
-call :push_kind champion
-call :push_kind boss
+if not exist drop\mob\minion\walking mkdir drop\mob\minion\walking
+if not exist drop\mob\minion\attack mkdir drop\mob\minion\attack
+if not exist drop\mob\minion\death mkdir drop\mob\minion\death
+if not exist drop\mob\champion\walking mkdir drop\mob\champion\walking
+if not exist drop\mob\champion\attack mkdir drop\mob\champion\attack
+if not exist drop\mob\champion\death mkdir drop\mob\champion\death
+if not exist drop\mob\boss\walking mkdir drop\mob\boss\walking
+if not exist drop\mob\boss\attack mkdir drop\mob\boss\attack
+if not exist drop\mob\boss\death mkdir drop\mob\boss\death
 
-if "%COPIED%"=="0" (
-  echo No frames found. Example: drop\mob\minion\walking\0.png
-  echo Kinds: minion, champion, boss. Anims: walking, attack, death
+set KIND=%~1
+if "%KIND%"=="" set KIND=minion
+set ANIM=%~2
+if "%ANIM%"=="" set ANIM=walking
+
+if /I "%KIND%"=="xiaoguai" set KIND=minion
+if /I "%KIND%"=="jingying" set KIND=champion
+if /I "%KIND%"=="shouling" set KIND=boss
+
+set SRC=drop\mob\%KIND%\%ANIM%
+set DST=public\sprites\inbox\monsters\%KIND%\%ANIM%
+
+if not exist "%SRC%" (
+  echo Missing folder: %SRC%
+  explorer "drop\mob"
   pause
   exit /b 1
 )
 
-git add -- "public/sprites/inbox/monsters"
-git status --porcelain -- "public/sprites/inbox/monsters"
-git commit -m "Update monster sprite frames from drop/mob."
+dir /b "%SRC%\*.png" "%SRC%\*.webp" "%SRC%\*.jpg" >nul 2>nul
+if errorlevel 1 (
+  echo No images in %SRC%
+  echo Put 0.png 1.png ... into that folder
+  explorer "%CD%\%SRC%"
+  pause
+  exit /b 1
+)
+
+if not exist "%DST%" mkdir "%DST%"
+xcopy /Y /Q "%SRC%\*.png" "%DST%\" >nul 2>nul
+xcopy /Y /Q "%SRC%\*.webp" "%DST%\" >nul 2>nul
+xcopy /Y /Q "%SRC%\*.jpg" "%DST%\" >nul 2>nul
+
+git add -- "public/sprites/inbox/monsters/%KIND%/%ANIM%"
+git status --porcelain -- "public/sprites/inbox/monsters/%KIND%/%ANIM%"
+git commit -m "Add %KIND% %ANIM% monster frames from drop/mob."
 if errorlevel 1 (
   echo Nothing new to commit, or commit failed.
   pause
@@ -28,24 +58,5 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo OK. Tell the agent: 图放好了
+echo OK. Tell agent: tu fang hao le
 pause
-exit /b 0
-
-:push_kind
-set KIND=%~1
-for %%A in (walking attack death) do (
-  if exist "drop\mob\%KIND%\%%A\*.png" (
-    if not exist "public\sprites\inbox\monsters\%KIND%\%%A" mkdir "public\sprites\inbox\monsters\%KIND%\%%A"
-    copy /Y "drop\mob\%KIND%\%%A\*.png" "public\sprites\inbox\monsters\%KIND%\%%A\" >nul
-    echo copied drop\mob\%KIND%\%%A
-    set COPIED=1
-  )
-  if exist "drop\mob\%KIND%\%%A\*.webp" (
-    if not exist "public\sprites\inbox\monsters\%KIND%\%%A" mkdir "public\sprites\inbox\monsters\%KIND%\%%A"
-    copy /Y "drop\mob\%KIND%\%%A\*.webp" "public\sprites\inbox\monsters\%KIND%\%%A\" >nul
-    echo copied drop\mob\%KIND%\%%A webp
-    set COPIED=1
-  )
-)
-exit /b 0
