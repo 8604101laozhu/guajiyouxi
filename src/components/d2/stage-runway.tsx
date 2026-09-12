@@ -354,8 +354,8 @@ export function StageRunway({
           <img
             src={sprite}
             alt=""
-            className="absolute left-[10%] z-10 h-[70%] w-auto max-w-[36%] origin-bottom object-contain object-bottom drop-shadow-[0_8px_12px_rgba(0,0,0,0.55)] sm:left-[14%] [-webkit-transform:scaleX(-1)] [transform:scaleX(-1)]"
-            style={{ bottom: `${groundBottomPct}%` }}
+            className="absolute left-[10%] z-10 h-[70%] w-auto max-w-[36%] object-contain object-bottom drop-shadow-[0_8px_12px_rgba(0,0,0,0.55)] sm:left-[14%]"
+            style={{ bottom: `${groundBottomPct}%`, transform: "scaleX(-1)", transformOrigin: "bottom center" }}
             draggable={false}
           />
         ) : (
