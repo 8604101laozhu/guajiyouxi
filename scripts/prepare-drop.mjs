@@ -49,5 +49,5 @@ console.log(`backgrounds: ${bgAscii}`);
 console.log(`chapter 1 file: ${path.join(chapter1, "loop.png")}`);
 
 if (process.platform === "win32") {
-  spawn("explorer", [bgAscii], { detached: true, stdio: "ignore" }).unref();
+  spawn("explorer", [chapter1], { detached: true, stdio: "ignore" }).unref();
 }
