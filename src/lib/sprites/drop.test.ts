@@ -25,6 +25,12 @@ describe("drop folder routing", () => {
       ext: "png",
       destName: "loop.png",
     });
+    expect(resolveDropRel("bg/1/loop.png")).toEqual({
+      clip: "inbox/backgrounds/chapter-1",
+      index: null,
+      ext: "png",
+      destName: "loop.png",
+    });
     expect(resolveDropRel("背景/鲜血荒地/sky.png")?.clip).toBe("inbox/backgrounds/chapter-1");
     expect(resolveDropRel("背景/10/地面.png")?.destName).toBe("ground.png");
     expect(resolveDropRel("bg-2-loop.png")?.clip).toBe("inbox/backgrounds/chapter-2");

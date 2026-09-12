@@ -60,11 +60,12 @@ function printSlots(dropDir) {
   console.log("");
   console.log("可用子目录：");
   for (const slot of DROP_FOLDERS) {
-    const mark = slot.folder.startsWith("背景/") ? "← 横板背景" : "";
+    const mark = slot.folder.startsWith("背景/") || slot.folder.startsWith("bg/") ? "<- background" : "";
     console.log(`  ${path.join(dropDir, ...slot.folder.split("/"))} ${mark}`);
   }
   console.log("");
-  console.log("第 1 章背景请扔到：");
+  console.log("Chapter 1 background goes here:");
+  console.log(`  ${path.join(dropDir, "bg", "1", "loop.png")}`);
   console.log(`  ${path.join(dropDir, "背景", "1", "loop.png")}`);
   console.log("");
 }
@@ -73,9 +74,9 @@ async function run(dropDir, push) {
   await ensureDropTree(dropDir);
   const copied = await ingestDrop(dropDir, inboxRoot);
   if (!copied.length) {
-    console.log(`投放文件夹是空的：${dropDir}`);
-    console.log("角色帧 → 走路 / 攻击 / 死亡");
-    console.log("第 1 章背景 → 背景\\1\\loop.png");
+    console.log(`Empty drop folder: ${dropDir}`);
+    console.log("Character frames -> 走路 / 攻击 / 死亡");
+    console.log("Chapter 1 background -> drop\\bg\\1\\loop.png");
     return copied;
   }
   for (const item of copied) {

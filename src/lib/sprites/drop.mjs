@@ -80,6 +80,18 @@ export const DROP_FOLDERS = [
   { folder: "背景/10", clip: "inbox/backgrounds/chapter-10" },
   { folder: "背景/11", clip: "inbox/backgrounds/chapter-11" },
   { folder: "背景/12", clip: "inbox/backgrounds/chapter-12" },
+  { folder: "bg/1", clip: "inbox/backgrounds/chapter-1" },
+  { folder: "bg/2", clip: "inbox/backgrounds/chapter-2" },
+  { folder: "bg/3", clip: "inbox/backgrounds/chapter-3" },
+  { folder: "bg/4", clip: "inbox/backgrounds/chapter-4" },
+  { folder: "bg/5", clip: "inbox/backgrounds/chapter-5" },
+  { folder: "bg/6", clip: "inbox/backgrounds/chapter-6" },
+  { folder: "bg/7", clip: "inbox/backgrounds/chapter-7" },
+  { folder: "bg/8", clip: "inbox/backgrounds/chapter-8" },
+  { folder: "bg/9", clip: "inbox/backgrounds/chapter-9" },
+  { folder: "bg/10", clip: "inbox/backgrounds/chapter-10" },
+  { folder: "bg/11", clip: "inbox/backgrounds/chapter-11" },
+  { folder: "bg/12", clip: "inbox/backgrounds/chapter-12" },
 ];
 
 export function toPosix(rel) {
