@@ -1,6 +1,10 @@
+import { mkdtemp, mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   HERO_ACTION_CLIPS,
+  listStudioCharacters,
   normalizeFrameName,
   resolveActionClip,
   resolveRole,
@@ -26,5 +30,15 @@ describe("studio character import", () => {
     expect(normalizeFrameName("00.png")).toBe("0.png");
     expect(normalizeFrameName("walk_07.PNG")).toBe("7.png");
     expect(normalizeFrameName("note.txt")).toBeNull();
+  });
+
+  it("lists every character folder under the studio root", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "studio-chars-"));
+    await mkdir(path.join(root, "法师1新"));
+    await mkdir(path.join(root, "史莱姆王"));
+    await writeFile(path.join(root, "readme.txt"), "x");
+    expect(await listStudioCharacters(root)).toEqual(
+      ["史莱姆王", "法师1新"].sort((a, b) => a.localeCompare(b, "zh")),
+    );
   });
 });

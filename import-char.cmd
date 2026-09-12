@@ -1,6 +1,6 @@
 @echo off
-REM Import studio character pack: 待机/走路/攻击/死亡 -> public/sprites/inbox
-REM Double-click, or drag a character folder onto this file, or:
+REM Import ONE studio character pack into public/sprites/inbox.
+REM There is no default character. Pass a name, or drag that character folder here.
 REM   import-char.cmd 法师1新
 REM   import-char.cmd 史莱姆王 --as=boss
 cd /d "%~dp0"
@@ -13,11 +13,16 @@ if errorlevel 1 (
 )
 
 if "%~1"=="" (
+  echo No character name given.
+  echo Example: import-char.cmd 法师1新
+  echo Or drag a character folder onto this file.
+  echo.
   node scripts\import-char.mjs
-) else (
-  node scripts\import-char.mjs %*
+  pause
+  exit /b 1
 )
 
+node scripts\import-char.mjs %*
 if errorlevel 1 (
   echo.
   echo FAIL. Check the path above.

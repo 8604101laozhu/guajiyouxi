@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 /**
- * Import a studio character pack into public/sprites/inbox.
+ * Import ONE studio character pack into public/sprites/inbox.
  *
  * Layout (auto-built by art tools):
  *   D:\ai炼丹\香草社\人物生成图\{名字}\待机|走路|攻击|死亡\00.png …
  *
+ * There is NO default character. 法师1新 is just one folder among many.
+ *
  * Usage:
- *   node scripts/import-char.mjs
  *   node scripts/import-char.mjs 法师1新
- *   node scripts/import-char.mjs "D:\ai炼丹\香草社\人物生成图\法师1新"
  *   node scripts/import-char.mjs 史莱姆王 --as=boss
+ *   node scripts/import-char.mjs "D:\ai炼丹\香草社\人物生成图\某角色"
  *   node scripts/import-char.mjs 法师1新 --no-push
  */
 import { existsSync } from "node:fs";
@@ -22,7 +23,7 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const inboxRoot = path.join(repoRoot, "public", "sprites");
 const configPath = path.join(repoRoot, "char-import.json");
 
-/** Same folder the art pipeline auto-creates. Edit char-import.json if yours differs. */
+/** Studio root only — characters are subfolders. Edit char-import.json if yours differs. */
 export const DEFAULT_STUDIO_ROOT = String.raw`D:\ai炼丹\香草社\人物生成图`;
 
 /** Studio action folder → hero inbox clip. */
@@ -80,16 +81,26 @@ export function resolveRole(raw) {
   return ROLE_ALIAS[raw] ?? ROLE_ALIAS[raw.toLowerCase()] ?? "hero";
 }
 
+/** One subfolder under studio root = one character. */
+export async function listStudioCharacters(studioRoot) {
+  if (!existsSync(studioRoot)) return [];
+  const entries = await readdir(studioRoot, { withFileTypes: true });
+  return entries
+    .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+    .map((d) => d.name)
+    .sort((a, b) => a.localeCompare(b, "zh"));
+}
+
 async function loadConfig() {
   const fallback = {
     studioRoot: DEFAULT_STUDIO_ROOT,
-    lastChar: "法师1新",
+    lastChar: "",
     as: "hero",
     push: true,
   };
   try {
     const raw = JSON.parse(await readFile(configPath, "utf8"));
-    return { ...fallback, ...raw };
+    return { ...fallback, ...raw, lastChar: raw.lastChar ?? "" };
   } catch {
     return fallback;
   }
@@ -97,6 +108,37 @@ async function loadConfig() {
 
 async function saveConfig(cfg) {
   await writeFile(configPath, `${JSON.stringify(cfg, null, 2)}\n`, "utf8");
+}
+
+async function printUsage(cfg) {
+  console.log("必须指定角色名。法师1新只是其中之一，不会默认导入。");
+  console.log("");
+  console.log("用法:");
+  console.log("  import-char.cmd 角色名");
+  console.log("  import-char.cmd 史莱姆王 --as=boss");
+  console.log("  或把某个角色文件夹拖到 import-char.cmd 上");
+  console.log("");
+  console.log("炼丹根目录（下面每个子文件夹是一个角色）:");
+  console.log(`  ${cfg.studioRoot}`);
+  const names = await listStudioCharacters(cfg.studioRoot);
+  if (names.length) {
+    console.log("");
+    console.log("当前能看到的角色:");
+    for (const name of names) {
+      const mark = name === cfg.lastChar ? "  <- 上次导过" : "";
+      console.log(`  ${name}${mark}`);
+    }
+  } else if (!existsSync(cfg.studioRoot)) {
+    console.log("");
+    console.log("这个根目录还不存在，请改 char-import.json 里的 studioRoot。");
+  } else {
+    console.log("");
+    console.log("根目录是空的，先在炼丹机生成角色包。");
+  }
+  if (cfg.lastChar) {
+    console.log("");
+    console.log(`上次导过: ${cfg.lastChar}（不会自动再导，请显式写名字）`);
+  }
 }
 
 function parseArgs(argv) {
@@ -209,15 +251,14 @@ async function main() {
   const asRole = resolveRole(args.asRole ?? cfg.as ?? "hero");
   const doPush = args.push ?? cfg.push ?? true;
 
-  const input = args.positionals[0] ?? cfg.lastChar;
-  const charDir = resolveCharDir(input, cfg.studioRoot);
-  if (!charDir) {
-    console.log("用法: node scripts/import-char.mjs 法师1新");
-    console.log(`默认炼丹目录: ${cfg.studioRoot}`);
+  const input = args.positionals[0];
+  if (!input) {
+    await printUsage(cfg);
     process.exitCode = 1;
     return;
   }
 
+  const charDir = resolveCharDir(input, cfg.studioRoot);
   const charName = path.basename(charDir);
   console.log(`角色包: ${charDir}`);
   console.log(`导入为: ${asRole}`);
