@@ -10,7 +10,8 @@
     "test": "vitest run",
     "drop": "node scripts/drop.mjs",
     "drop:watch": "node scripts/drop.mjs --watch",
-    "drop:push": "node scripts/drop.mjs --push"
+    "drop:push": "node scripts/drop.mjs --push",
+    "import:char": "node scripts/import-char.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

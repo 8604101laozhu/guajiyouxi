@@ -8,7 +8,20 @@
 - 换武器：W4/W5 的 `COSMETIC_NAME`，只换武器层，不重出身体
 - 网页「动作循环」：选走路/攻击/死亡，选空手/法杖/剑。纸娃娃换主手也走同一套 cosmetics
 
-本机 16GB 先跑 W2 出空手身体。生成图不要拖进对话：本机打开 `drop/走路`（或双击 `投放.cmd`），`npm run drop:watch -- --push` 会拷进 `public/sprites/inbox` 并推到仓库。炼丹盘可以在 `drop.json` 里写成 `D:\\ai炼丹\\投给挂机游戏`。
+本机 16GB 先跑 W2 出空手身体。生成图不要拖进对话。
+
+**最省事（香草社人物包）**：炼丹输出已是  
+`D:\ai炼丹\香草社\人物生成图\{名字}\待机|走路|攻击|死亡\`。  
+在工程根双击 **`import-char.cmd`**（默认导「法师1新」），或：
+
+```bat
+import-char.cmd 法师1新
+import-char.cmd 史莱姆王 --as=boss
+```
+
+也可把角色文件夹拖到 `import-char.cmd` 上。会拷进 `public/sprites/inbox` 并 `git push`。路径记在 `char-import.json`。
+
+旧方式：本机打开 `drop/走路`（或双击 `投放.cmd`），`npm run drop:watch -- --push`。炼丹盘可在 `drop.json` 写成 `D:\\ai炼丹\\投给挂机游戏`。
 
 工坊左侧可复制填好 `ANIMATION_NAME` 的 W2 提示词。槽位与抽帧说明在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 

@@ -11,6 +11,9 @@ const ANIM_ALIAS = {
   攻击: "attack",
   death: "death",
   死亡: "death",
+  idle: "idle",
+  stand: "idle",
+  待机: "idle",
 };
 
 const COS_ALIAS = {
@@ -74,6 +77,7 @@ const BG_LAYERS = {
 };
 
 export const DROP_FOLDERS = [
+  { folder: "待机", clip: "inbox/base_animations/idle" },
   { folder: "走路", clip: "inbox/base_animations/walking" },
   { folder: "攻击", clip: "inbox/base_animations/attack" },
   { folder: "死亡", clip: "inbox/base_animations/death" },

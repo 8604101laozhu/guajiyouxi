@@ -1,4 +1,5 @@
 {
   "dropDir": "D:\\ai炼丹\\投给挂机游戏",
-  "push": true
+  "push": true,
+  "_charImport": "角色包请用 import-char.cmd，见 char-import.json"
 }
