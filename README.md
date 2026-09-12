@@ -8,19 +8,14 @@
 - 换武器：W4/W5 的 `COSMETIC_NAME`，只换武器层，不重出身体
 - 网页「动作循环」：选走路/攻击/死亡，选空手/法杖/剑。纸娃娃换主手也走同一套 cosmetics
 
-本机 16GB 先跑 W2 出空手身体。生成图不要拖进对话。
+本机 16GB 先跑 W2 出空手身体。**推荐工作流：工程下到本机，直接改，再备份。** 见 [`docs/本地开发.md`](docs/本地开发.md)。
 
-**最省事（香草社人物包）**：炼丹输出已是  
-`D:\ai炼丹\香草社\人物生成图\{名字}\待机|走路|攻击|死亡\`（每个名字一个角色，没有默认角色）。  
+1. 本机工程：`G:\guajiyouxi\guajiyouxi`（没有就 `git clone https://github.com/8604101laozhu/guajiyouxi.git`）
+2. 图直接拷进 `public\sprites\inbox\...`（不要拖进对话）
+3. 双击 **`backup.cmd`** 推到 GitHub
+4. 跟我说：**备份好了**
 
-```bat
-import-char.cmd 法师1新
-import-char.cmd 史莱姆王 --as=boss
-```
-
-或把**某个角色文件夹**拖到 `import-char.cmd` 上。会拷进 `public/sprites/inbox` 并 `git push`。炼丹根目录在 `char-import.json` 的 `studioRoot`。
-
-旧方式：本机打开 `drop/走路`（或双击 `投放.cmd`），`npm run drop:watch -- --push`。炼丹盘可在 `drop.json` 写成 `D:\\ai炼丹\\投给挂机游戏`。
+女法师身体帧目录：`public\sprites\inbox\base_animations\{walking,attack,death,idle}\`
 
 工坊左侧可复制填好 `ANIMATION_NAME` 的 W2 提示词。槽位与抽帧说明在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 
