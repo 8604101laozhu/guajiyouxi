@@ -13,6 +13,7 @@ export type HairSecondary = {
 
 export type ChestSecondary = {
   y: number;
+  scaleX: number;
   scaleY: number;
 };
 
@@ -28,15 +29,22 @@ export function hairSecondary(t: number, amount = 1): HairSecondary {
   };
 }
 
-/** Delayed squash after each foot plant. Male pipeline keeps amount at 0. */
+/**
+ * Dense twice-per-cycle bounce after each foot plant.
+ * Male pipeline keeps amount at 0.
+ */
 export function chestSecondary(t: number, amount = 0): ChestSecondary {
-  if (amount <= 0) return { y: 0, scaleY: 1 };
+  if (amount <= 0) return { y: 0, scaleX: 1, scaleY: 1 };
   const a = ((t % 1) + 1) % 1 * Math.PI * 2;
-  const lagged = a + 0.85;
-  const plant = Math.pow(Math.max(0, Math.cos(2 * a)), 3);
+  // Two plants per walk cycle; lag recovery so bounce reads after the step.
+  const lagged = a + 0.72;
+  const plant = Math.pow(Math.max(0, Math.cos(2 * a)), 2.2);
+  const recover = Math.sin(lagged * 2) * 0.55 + Math.sin(lagged) * 0.45;
+  const drop = plant * 7.2 + recover * 4.8;
   return {
-    y: (Math.sin(lagged) * 3.2 + plant * 2.4) * amount,
-    scaleY: 1 + Math.sin(lagged) * 0.045 * amount,
+    y: drop * amount,
+    scaleX: 1 + plant * 0.07 * amount - recover * 0.025 * amount,
+    scaleY: 1 - plant * 0.1 * amount + recover * 0.055 * amount,
   };
 }
 

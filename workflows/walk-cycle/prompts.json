@@ -12,7 +12,7 @@
     "female": {
       "BODY": "The character is an adult woman. Keep a feminine silhouette. Clothing stays fully on.",
       "HAIR": "- long hair secondary motion: delayed sway one-eighth cycle after the head bob, tips jitter on each step, roots stay attached to the scalp",
-      "CHEST": "- subtle chest bounce on each foot plant, delayed, small amplitude, follows the torso, no exaggeration"
+      "CHEST": "- chest secondary motion is REQUIRED on every foot plant (two clear peaks per walk cycle)\n- on each plant: bust drops with ~1/8-cycle delay, then springs back up with soft squash then stretch\n- amplitude must stay readable at sprite size: clear vertical travel on the bust silhouette, clothing follows the bounce\n- denser than hair: bounce peaks are sharper and more frequent than hair sway; do not lock the bust to the ribcage\n- roots stay attached to the torso; no sliding, no spin, no clothing removal, keep costume fully on"
     },
     "male": {
       "BODY": "The character is an adult man. Keep a masculine silhouette.",

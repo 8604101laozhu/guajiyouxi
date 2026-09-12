@@ -165,7 +165,7 @@ export function MageWalkStudio({
         x: (joints[2].x + joints[5].x) / 2 + 2,
         y: (joints[2].y + joints[5].y) / 2 + 34 + chest.y,
       };
-      const rw = 16;
+      const rw = 16 * chest.scaleX;
       const rh = 11 * chest.scaleY;
       ctx.fillStyle = "rgba(232, 168, 140, 0.45)";
       ctx.strokeStyle = "rgba(232, 168, 140, 0.95)";
@@ -283,7 +283,7 @@ export function MageWalkStudio({
             <input
               type="range"
               min={0}
-              max={100}
+              max={140}
               value={Math.round(chestAmt * 100)}
               disabled={gender === "male"}
               onChange={(event) => setChestAmt(Number(event.target.value) / 100)}

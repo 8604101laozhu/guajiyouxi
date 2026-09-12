@@ -38,11 +38,20 @@ export const ANIMATION_MOTION: Record<AnimationName, string> = {
     "- in-place death collapse, then hold the last pose\n- no get-up, no extra characters",
 };
 
+/** Dense CHEST slot: WAN needs several explicit bounce cues or the motion disappears. */
+export const FEMALE_CHEST_SLOT = [
+  "- chest secondary motion is REQUIRED on every foot plant (two clear peaks per walk cycle)",
+  "- on each plant: bust drops with ~1/8-cycle delay, then springs back up with soft squash then stretch",
+  "- amplitude must stay readable at sprite size: clear vertical travel on the bust silhouette, clothing follows the bounce",
+  "- denser than hair: bounce peaks are sharper and more frequent than hair sway; do not lock the bust to the ribcage",
+  "- roots stay attached to the torso; no sliding, no spin, no clothing removal, keep costume fully on",
+].join("\n");
+
 export const GENDER_SLOTS: Record<GenderId, Omit<PromptSlots, "MOTION">> = {
   female: {
     BODY: "The character is an adult woman. Keep a feminine silhouette. Clothing stays fully on.",
     HAIR: "- long hair secondary motion: delayed sway one-eighth cycle after the head bob, tips jitter on each step, roots stay attached to the scalp",
-    CHEST: "- subtle chest bounce on each foot plant, delayed, small amplitude, follows the torso, no exaggeration",
+    CHEST: FEMALE_CHEST_SLOT,
   },
   male: {
     BODY: "The character is an adult man. Keep a masculine silhouette.",
@@ -52,7 +61,7 @@ export const GENDER_SLOTS: Record<GenderId, Omit<PromptSlots, "MOTION">> = {
 };
 
 export const DEFAULT_SECONDARY: Record<GenderId, { hair: number; chest: number }> = {
-  female: { hair: 1, chest: 0.7 },
+  female: { hair: 1, chest: 1 },
   male: { hair: 0.28, chest: 0 },
 };
 

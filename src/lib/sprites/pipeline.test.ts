@@ -10,7 +10,7 @@ describe("gender prompt swap", () => {
     expect(m).toContain("in-place walk loop");
     expect(f).toContain("adult woman");
     expect(m).toContain("adult man");
-    expect(f).toContain("chest bounce");
+    expect(f).toContain("chest secondary");
     expect(m).toContain("no chest bounce");
     expect(f).toContain("unarmed");
     expect(f).not.toContain("{{");
@@ -49,7 +49,18 @@ describe("secondary motion", () => {
   });
 
   it("gives female chest a delayed bounce and male none", () => {
-    expect(chestSecondary(0.25, 0.7).scaleY).not.toBe(1);
-    expect(chestSecondary(0.25, 0)).toEqual({ y: 0, scaleY: 1 });
+    const samples = [0, 0.12, 0.25, 0.37, 0.5, 0.62, 0.75, 0.88].map((t) => chestSecondary(t, 1));
+    const maxY = Math.max(...samples.map((s) => Math.abs(s.y)));
+    expect(maxY).toBeGreaterThan(4);
+    expect(samples.some((s) => s.scaleY !== 1)).toBe(true);
+    expect(samples.some((s) => s.scaleX !== 1)).toBe(true);
+    expect(chestSecondary(0.25, 0)).toEqual({ y: 0, scaleX: 1, scaleY: 1 });
+  });
+
+  it("keeps dense CHEST cues in the female W2 prompt", () => {
+    const f = fillW2Prompt("female", "walking");
+    expect(f).toContain("two clear peaks per walk cycle");
+    expect(f).toContain("readable at sprite size");
+    expect(f).toContain("denser than hair");
   });
 });
