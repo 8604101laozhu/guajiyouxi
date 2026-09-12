@@ -55,6 +55,20 @@ GitHub 上目前**没有**关卡背景，只有角色走路 8 帧。背景按**�
 
 网页横板右上角「复制本章背景提示词」= 香草社 World + 本章场景。出好后不要拖进对话，投放.cmd 推上来再跟我说「图放好了」。
 
+## 怪物怎么投送
+
+关卡右侧显示本关怪物（小怪 / 精英 / 首领）。和角色一样放走路帧即可，攻击/死亡可选。
+
+| 类型 | 目录 | 关卡 |
+| --- | --- | --- |
+| 小怪 | `drop/mob/minion/walking/` | 每章 1–8 |
+| 精英 | `drop/mob/champion/walking/` | 每章 9 |
+| 首领 | `drop/mob/boss/walking/` | 每章 10 |
+
+帧命名：`0.png` `1.png` …，默认**朝左**，透明底。中文目录：`drop/怪物/小怪/走路/`。
+
+Windows：图放进目录后双击 **`push-mob.cmd`**，再跟我说「图放好了」。分章覆盖可用 `drop/mob/1/minion/walking/`。说明见 [`workflows/monsters`](workflows/monsters/README.md)。
+
 ## 部位
 
 对照暗黑 2 人物界面：
@@ -95,5 +109,5 @@ GitHub 的做法是：图只当仓库里的文件（blob），`git push` / `git 
 仓库已接通：https://github.com/8604101laozhu/guajiyouxi.git
 
 1. 双击 `投放.cmd`（一直开着）
-2. png 扔进 `G:\guajiyouxi\guajiyouxi\drop` 对应子目录（走路 / 攻击 / 死亡 / 法杖 / 剑 / 背景/1）
+2. png 扔进 `G:\guajiyouxi\guajiyouxi\drop` 对应子目录（走路 / 攻击 / 死亡 / 法杖 / 剑 / 背景或 bg/1 / mob/minion/walking）
 3. 跟我说「图放好了」——我只 `git pull` 数文件名，不打开图

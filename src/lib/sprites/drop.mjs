@@ -24,6 +24,22 @@ const STILL_ALIAS = new Set(["stills", "still", "立绘"]);
 
 const BG_ROOT = new Set(["背景", "backgrounds", "background", "bg"]);
 
+const MOB_ROOT = new Set(["怪物", "monsters", "monster", "mob", "mobs"]);
+
+const KIND_ALIAS = {
+  minion: "minion",
+  trash: "minion",
+  normal: "minion",
+  小怪: "minion",
+  杂兵: "minion",
+  champion: "champion",
+  elite: "champion",
+  精英: "champion",
+  boss: "boss",
+  首领: "boss",
+  头目: "boss",
+};
+
 const CHAPTER_NAMES = {
   鲜血荒地: 1,
   冰冷之原: 2,
@@ -92,6 +108,24 @@ export const DROP_FOLDERS = [
   { folder: "bg/10", clip: "inbox/backgrounds/chapter-10" },
   { folder: "bg/11", clip: "inbox/backgrounds/chapter-11" },
   { folder: "bg/12", clip: "inbox/backgrounds/chapter-12" },
+  { folder: "mob/minion/walking", clip: "inbox/monsters/minion/walking" },
+  { folder: "mob/minion/attack", clip: "inbox/monsters/minion/attack" },
+  { folder: "mob/minion/death", clip: "inbox/monsters/minion/death" },
+  { folder: "mob/champion/walking", clip: "inbox/monsters/champion/walking" },
+  { folder: "mob/champion/attack", clip: "inbox/monsters/champion/attack" },
+  { folder: "mob/champion/death", clip: "inbox/monsters/champion/death" },
+  { folder: "mob/boss/walking", clip: "inbox/monsters/boss/walking" },
+  { folder: "mob/boss/attack", clip: "inbox/monsters/boss/attack" },
+  { folder: "mob/boss/death", clip: "inbox/monsters/boss/death" },
+  { folder: "怪物/小怪/走路", clip: "inbox/monsters/minion/walking" },
+  { folder: "怪物/小怪/攻击", clip: "inbox/monsters/minion/attack" },
+  { folder: "怪物/小怪/死亡", clip: "inbox/monsters/minion/death" },
+  { folder: "怪物/精英/走路", clip: "inbox/monsters/champion/walking" },
+  { folder: "怪物/精英/攻击", clip: "inbox/monsters/champion/attack" },
+  { folder: "怪物/精英/死亡", clip: "inbox/monsters/champion/death" },
+  { folder: "怪物/首领/走路", clip: "inbox/monsters/boss/walking" },
+  { folder: "怪物/首领/攻击", clip: "inbox/monsters/boss/attack" },
+  { folder: "怪物/首领/死亡", clip: "inbox/monsters/boss/death" },
 ];
 
 export function toPosix(rel) {
@@ -167,6 +201,34 @@ function mapChapter(token) {
   return null;
 }
 
+function mapKind(token) {
+  if (!token) return null;
+  return KIND_ALIAS[fold(token)] ?? KIND_ALIAS[token] ?? null;
+}
+
+function monsterClipPath(kind, anim, chapter) {
+  if (chapter) return `inbox/monsters/chapter-${chapter}/${kind}/${anim}`;
+  return `inbox/monsters/${kind}/${anim}`;
+}
+
+function monsterHit(bits, index, ext) {
+  if (!bits[0] || !MOB_ROOT.has(bits[0])) return null;
+  const rest = bits.slice(1);
+  let chapter = null;
+  let kindTok = rest[0];
+  let animTok = rest[1];
+  const maybeChapter = mapChapter(rest[0] ?? "");
+  if (maybeChapter && rest.length >= 2) {
+    chapter = maybeChapter;
+    kindTok = rest[1];
+    animTok = rest[2];
+  }
+  const kind = mapKind(kindTok ?? "");
+  if (!kind) return null;
+  const anim = mapAnim(animTok ?? "") ?? "walking";
+  return { clip: monsterClipPath(kind, anim, chapter), index, ext };
+}
+
 function mapLayer(stem, index) {
   const folded = fold(stem);
   if (BG_LAYERS[stem]) return BG_LAYERS[stem];
@@ -216,6 +278,8 @@ export function resolveDropRel(rel) {
     const hit = backgroundHit(chapter, stem, parsed.index, parsed.ext);
     if (hit) return hit;
   }
+  const mob = monsterHit(bits, parsed.index, parsed.ext);
+  if (mob) return mob;
   if (bits.length === 0) {
     const bgPrefix = parsed.prefix.match(/^(背景|bg|backgrounds?)[-_]?(.+)$/i);
     if (bgPrefix) {
@@ -266,6 +330,24 @@ const SLOT_HINTS = {
   "剑/走路": "剑武器层 · 走路。\n",
   "剑/攻击": "剑武器层 · 攻击。\n",
   "剑/死亡": "剑武器层 · 死亡。\n",
+  "mob/minion/walking": "Small mob walk frames: 0.png 1.png … Face LEFT.\n",
+  "mob/minion/attack": "Small mob attack frames.\n",
+  "mob/minion/death": "Small mob death frames.\n",
+  "mob/champion/walking": "Champion walk frames. Face LEFT.\n",
+  "mob/champion/attack": "Champion attack frames.\n",
+  "mob/champion/death": "Champion death frames.\n",
+  "mob/boss/walking": "Boss walk frames. Face LEFT.\n",
+  "mob/boss/attack": "Boss attack frames.\n",
+  "mob/boss/death": "Boss death frames.\n",
+  "怪物/小怪/走路": "小怪走路帧：0.png 1.png … 默认朝左。\n",
+  "怪物/小怪/攻击": "小怪攻击帧。\n",
+  "怪物/小怪/死亡": "小怪死亡帧。\n",
+  "怪物/精英/走路": "精英走路帧。朝左。\n",
+  "怪物/精英/攻击": "精英攻击帧。\n",
+  "怪物/精英/死亡": "精英死亡帧。\n",
+  "怪物/首领/走路": "首领走路帧。朝左。\n",
+  "怪物/首领/攻击": "首领攻击帧。\n",
+  "怪物/首领/死亡": "首领死亡帧。\n",
 };
 
 function backgroundHint(folder) {
@@ -288,6 +370,7 @@ export async function ensureDropTree(dropDir) {
       "把生成的 png 丢进对应子目录。",
       "走路 / 攻击 / 死亡 = 角色帧",
       "背景\\1 = 第 1 章横板循环条（loop.png）",
+      "mob\\minion\\walking = 小怪走路帧（也可用 怪物\\小怪\\走路）",
       "不要拖进 Cursor 对话。",
       "",
     ].join("\n"),

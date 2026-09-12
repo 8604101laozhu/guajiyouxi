@@ -29,4 +29,9 @@ Install (on G:\guajiyouxi\guajiyouxi):
 
 If watch still ignores bg, run push-bg.cmd once (force copy+commit+push).
 
+Monsters:
+- Put frames in drop\mob\minion\walking\0.png (also champion / boss)
+- Double-click push-mob.cmd (or open-mob.cmd to open the folder)
+- Tell the agent: 图放好了
+
 Do NOT use the old Chinese-only 投放.cmd from GitHub until you overwrite it.

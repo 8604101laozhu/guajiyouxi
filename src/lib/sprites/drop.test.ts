@@ -34,6 +34,17 @@ describe("drop folder routing", () => {
     expect(resolveDropRel("背景/鲜血荒地/sky.png")?.clip).toBe("inbox/backgrounds/chapter-1");
     expect(resolveDropRel("背景/10/地面.png")?.destName).toBe("ground.png");
     expect(resolveDropRel("bg-2-loop.png")?.clip).toBe("inbox/backgrounds/chapter-2");
+    expect(resolveDropRel("mob/minion/walking/0.png")).toEqual({
+      clip: "inbox/monsters/minion/walking",
+      index: 0,
+      ext: "png",
+    });
+    expect(resolveDropRel("怪物/精英/攻击/2.png")?.clip).toBe("inbox/monsters/champion/attack");
+    expect(resolveDropRel("mob/boss/death/1.png")?.clip).toBe("inbox/monsters/boss/death");
+    expect(resolveDropRel("mob/1/minion/walking/0.png")?.clip).toBe(
+      "inbox/monsters/chapter-1/minion/walking",
+    );
+    expect(resolveDropRel("怪物/小怪/0.png")?.clip).toBe("inbox/monsters/minion/walking");
   });
 
   it("accepts a flat dump with prefixes", () => {

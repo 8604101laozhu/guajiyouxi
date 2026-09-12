@@ -1,4 +1,5 @@
 import type { WeaponClass } from "@/lib/d2/types";
+import { allMonsterClips } from "./monsters";
 
 export const ANIMATION_NAMES = ["walking", "attack", "death"] as const;
 export type AnimationName = (typeof ANIMATION_NAMES)[number];
@@ -38,6 +39,7 @@ export function allInboxClips(): string[] {
       clips.push(cosmeticDir(cosmetic, animation));
     }
   }
+  clips.push(...allMonsterClips());
   return clips;
 }
 

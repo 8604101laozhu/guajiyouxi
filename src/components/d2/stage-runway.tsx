@@ -11,6 +11,7 @@ import {
 } from "@/lib/sprites/backgrounds";
 import { layeredClips, type CosmeticName } from "@/lib/sprites/catalog";
 import { MAGE_WALK_CLIP } from "@/lib/sprites/clip";
+import { monsterChapterClip, monsterClip } from "@/lib/sprites/monsters";
 import { combatPower, getStage, kindLabel, type Character, type DifficultyId } from "@/lib/d2";
 import { cn } from "@/lib/utils";
 import { useEffect, useRef, useState } from "react";
@@ -135,6 +136,18 @@ export function StageRunway({
   const walk = useClip(layeredClips("walking", cosmetic).body, MAGE_WALK_CLIP);
   const attack = useClip(layeredClips("attack", cosmetic).body);
   const death = useClip(layeredClips("death", cosmetic).body);
+  const mobWalk = useClip(
+    monsterChapterClip(chapter, monster.kind, "walking"),
+    monsterClip(monster.kind, "walking"),
+  );
+  const mobAttack = useClip(
+    monsterChapterClip(chapter, monster.kind, "attack"),
+    monsterClip(monster.kind, "attack"),
+  );
+  const mobDeath = useClip(
+    monsterChapterClip(chapter, monster.kind, "death"),
+    monsterClip(monster.kind, "death"),
+  );
   const layers = classifyBackgroundFrames(bg.frames);
   const hasBg = layers.length > 0;
 
@@ -143,6 +156,7 @@ export function StageRunway({
   const [hp, setHp] = useState(1);
   const [offset, setOffset] = useState(0);
   const [frame, setFrame] = useState(0);
+  const [mobFrame, setMobFrame] = useState(0);
   const [copied, setCopied] = useState(false);
   const [previewOn, setPreviewOn] = useState(true);
   const completeRef = useRef(onComplete);
@@ -231,9 +245,22 @@ export function StageRunway({
         : walk.frames;
   const animating = scrolling && actionFrames.length > 1;
 
+  const mobActionFrames =
+    mode === "cleared" && mobDeath.frames.length
+      ? mobDeath.frames
+      : mode === "running" && hp < 0.4 && mobAttack.frames.length
+        ? mobAttack.frames
+        : mobWalk.frames;
+  const mobAnimating =
+    mode !== "cleared" && scrolling && mobActionFrames.length > 1;
+
   useEffect(() => {
     setFrame(0);
   }, [actionFrames]);
+
+  useEffect(() => {
+    setMobFrame(0);
+  }, [mobActionFrames]);
 
   useEffect(() => {
     if (!animating) return;
@@ -243,8 +270,21 @@ export function StageRunway({
     return () => window.clearInterval(id);
   }, [animating, actionFrames.length]);
 
+  useEffect(() => {
+    if (!mobAnimating) return;
+    const id = window.setInterval(() => {
+      setMobFrame((n) => (n + 1) % mobActionFrames.length);
+    }, 120);
+    return () => window.clearInterval(id);
+  }, [mobAnimating, mobActionFrames.length]);
+
   const sprite = actionFrames[Math.min(frame, Math.max(0, actionFrames.length - 1))];
+  const mobSprite =
+    mode === "cleared" && !mobDeath.frames.length
+      ? null
+      : mobActionFrames[Math.min(mobFrame, Math.max(0, mobActionFrames.length - 1))];
   const prompt = backgroundThemePrompt(chapter);
+  const hasMob = mobWalk.frames.length > 0 || mobAttack.frames.length > 0 || mobDeath.frames.length > 0;
 
   async function copyPrompt() {
     await navigator.clipboard.writeText(prompt);
@@ -365,6 +405,30 @@ export function StageRunway({
           />
         )}
 
+        {mobSprite ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={mobSprite}
+            alt=""
+            className={cn(
+              "absolute right-[8%] z-10 w-auto max-w-[40%] object-contain object-bottom drop-shadow-[0_8px_12px_rgba(0,0,0,0.55)] sm:right-[12%]",
+              monster.kind === "boss" ? "h-[78%]" : monster.kind === "champion" ? "h-[72%]" : "h-[62%]",
+              mode === "cleared" && "opacity-70",
+            )}
+            style={{ bottom: `${groundBottomPct}%`, transformOrigin: "bottom center" }}
+            draggable={false}
+          />
+        ) : !hasMob ? (
+          <div
+            className={cn(
+              "absolute right-[12%] z-10 border border-dashed border-[#6a5428]/50 bg-[#1a1008]/70",
+              monster.kind === "boss" ? "h-[55%] w-16" : "h-[45%] w-12",
+            )}
+            style={{ bottom: `${groundBottomPct}%` }}
+            title={`投放怪物：drop/mob/${monster.kind}/walking/`}
+          />
+        ) : null}
+
         {mode === "cleared" ? (
           <p className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-[#0c0a08]/35 text-lg tracking-[0.3em] text-[#c7a24a]">
             关卡结束
@@ -379,11 +443,15 @@ export function StageRunway({
           <p className="absolute right-3 bottom-3 z-10 max-w-[14rem] text-right text-[11px] leading-4 text-[#cfc3a6]/80">
             还没有本章背景。把 loop.png 放到 drop/bg/{chapter}/
           </p>
+        ) : !hasMob ? (
+          <p className="absolute right-3 bottom-3 z-10 max-w-[14rem] text-right text-[11px] leading-4 text-[#cfc3a6]/80">
+            还没有{kindLabel(monster.kind)}图。放到 drop/mob/{monster.kind}/walking/
+          </p>
         ) : null}
       </div>
 
       <p className="text-[12px] leading-5 text-[#8a7a5a]">
-        默认无限循环预览：人物踩在 78% 地面线上，背景无缝横滚。点「清剿本关」会进入战斗结算；虚线是地面参考线。
+        默认无限循环预览：人物踩在 78% 地面线上，背景无缝横滚；右侧是本关怪物。点「清剿本关」会进入战斗结算；虚线是地面参考线。
       </p>
     </section>
   );

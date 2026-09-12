@@ -44,9 +44,40 @@ await writeFile(
   "utf8",
 );
 
+const mobAscii = path.join(dropDir, "mob");
+for (const kind of ["minion", "champion", "boss"]) {
+  for (const anim of ["walking", "attack", "death"]) {
+    const dir = path.join(mobAscii, kind, anim);
+    await mkdir(dir, { recursive: true });
+    await writeFile(
+      path.join(dir, "PUT_FRAMES_HERE.txt"),
+      [
+        `${kind} ${anim} frames.`,
+        "Name: 0.png 1.png 2.png …",
+        "Face LEFT. Transparent PNG. Feet near bottom.",
+        "",
+      ].join("\n"),
+      "utf8",
+    );
+  }
+}
+await writeFile(
+  path.join(mobAscii, "README.txt"),
+  [
+    "Monster sprites (shared across chapters).",
+    "minion = stages 1-8, champion = 9, boss = 10.",
+    "Example: mob\\minion\\walking\\0.png",
+    "Then double-click push-mob.cmd",
+    "Optional chapter override: mob\\1\\minion\\walking\\",
+    "",
+  ].join("\n"),
+  "utf8",
+);
+
 console.log(`drop: ${dropDir}`);
 console.log(`backgrounds: ${bgAscii}`);
 console.log(`chapter 1 file: ${path.join(chapter1, "loop.png")}`);
+console.log(`monsters: ${path.join(mobAscii, "minion", "walking")}`);
 
 if (process.platform === "win32") {
   spawn("explorer", [chapter1], { detached: true, stdio: "ignore" }).unref();
