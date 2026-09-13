@@ -31,8 +31,9 @@ describe("numeric sprite clips", () => {
     expect(numericFrameName("2.jpg")).toBe(2);
   });
 
-  it("keeps a fixed inbox so generated frames have one drop folder", () => {
+  it("lists named player clips and keeps legacy base_animations", () => {
     expect(INBOX_CLIPS).toContain("inbox/unsorted");
+    expect(INBOX_CLIPS).toContain("inbox/characters/nv-fashi/walking");
     expect(INBOX_CLIPS).toContain("inbox/base_animations/walking");
     expect(INBOX_CLIPS).toContain("inbox/cosmetics/staff/attack");
     expect(INBOX_CLIPS).toContain("inbox/cosmetics/sword/death");

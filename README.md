@@ -15,7 +15,8 @@
 3. 双击 **`backup.cmd`** 推到 GitHub
 4. 跟我说：**备份好了**
 
-女法师身体帧目录：`public\sprites\inbox\base_animations\{walking,attack,death,idle}\`
+女法师身体帧（角色名在路径里）：`public\sprites\inbox\characters\nv-fashi\{walking,attack,death,idle}\`  
+其它玩家角色换 `nv-fashi` 这一段目录名。
 
 工坊左侧可复制填好 `ANIMATION_NAME` 的 W2 提示词。槽位与抽帧说明在 [`workflows/walk-cycle`](workflows/walk-cycle/README.md)。
 

@@ -1,0 +1,4 @@
+女法师（nv-fashi）· attack 帧
+把 0.png 1.png … 放这里。
+其它玩家角色用 characters/<英文id>/attack/
+

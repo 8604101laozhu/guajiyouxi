@@ -1,4 +1,11 @@
 import type { WeaponClass } from "@/lib/d2/types";
+import {
+  allCharacterBodyClips,
+  characterBodyDir,
+  DEFAULT_PLAYER_ID,
+  legacyBaseAnimationDir,
+  type PlayerCharacterId,
+} from "./characters";
 import { allMonsterClips } from "./monsters";
 
 export const ANIMATION_NAMES = ["walking", "attack", "death"] as const;
@@ -19,8 +26,12 @@ export const COSMETIC_LABEL: Record<CosmeticName, string> = {
   sword: "剑",
 };
 
-export function baseAnimationDir(animation: AnimationName): string {
-  return `inbox/base_animations/${animation}`;
+/** Named player body path. Prefer this over the legacy shared slot. */
+export function baseAnimationDir(
+  animation: AnimationName,
+  characterId: PlayerCharacterId | string = DEFAULT_PLAYER_ID,
+): string {
+  return characterBodyDir(characterId, animation);
 }
 
 export function cosmeticDir(cosmetic: CosmeticName, animation: AnimationName): string {
@@ -31,7 +42,8 @@ export function allInboxClips(): string[] {
   const clips = [
     "inbox/unsorted",
     "inbox/stills",
-    ...ANIMATION_NAMES.map(baseAnimationDir),
+    ...allCharacterBodyClips(),
+    ...ANIMATION_NAMES.map(legacyBaseAnimationDir),
   ];
   for (const cosmetic of COSMETIC_NAMES) {
     if (cosmetic === "unarmed") continue;
@@ -61,9 +73,15 @@ export function cosmeticFromWeaponClass(weaponClass: WeaponClass | undefined): C
   return "unarmed";
 }
 
-export function layeredClips(animation: AnimationName, cosmetic: CosmeticName) {
+export function layeredClips(
+  animation: AnimationName,
+  cosmetic: CosmeticName,
+  characterId: PlayerCharacterId | string = DEFAULT_PLAYER_ID,
+) {
   return {
-    body: baseAnimationDir(animation),
+    body: baseAnimationDir(animation, characterId),
+    /** Legacy shared folder without a character name — used only as empty-folder fallback. */
+    bodyFallback: legacyBaseAnimationDir(animation),
     weapon: cosmetic === "unarmed" ? null : cosmeticDir(cosmetic, animation),
   };
 }

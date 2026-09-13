@@ -32,9 +32,15 @@ export function sliceDirection(frames: string[], framesPerDir: number, direction
 export const SPRITE_INBOX = {
   unsorted: "inbox/unsorted",
   stills: "inbox/stills",
-  walking: "inbox/base_animations/walking",
-  attack: "inbox/base_animations/attack",
-  death: "inbox/base_animations/death",
+  /** Named default player (女法师). */
+  walking: "inbox/characters/nv-fashi/walking",
+  attack: "inbox/characters/nv-fashi/attack",
+  death: "inbox/characters/nv-fashi/death",
+  idle: "inbox/characters/nv-fashi/idle",
+  /** Legacy unnamed slot — prefer characters/{id}/… */
+  legacyWalking: "inbox/base_animations/walking",
+  legacyAttack: "inbox/base_animations/attack",
+  legacyDeath: "inbox/base_animations/death",
 } as const;
 
 export const INBOX_CLIPS = allInboxClips();

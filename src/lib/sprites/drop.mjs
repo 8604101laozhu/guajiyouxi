@@ -77,6 +77,16 @@ const BG_LAYERS = {
 };
 
 export const DROP_FOLDERS = [
+  // Named player characters (女法师 is only one of them)
+  { folder: "角色/女法师/待机", clip: "inbox/characters/nv-fashi/idle" },
+  { folder: "角色/女法师/走路", clip: "inbox/characters/nv-fashi/walking" },
+  { folder: "角色/女法师/攻击", clip: "inbox/characters/nv-fashi/attack" },
+  { folder: "角色/女法师/死亡", clip: "inbox/characters/nv-fashi/death" },
+  { folder: "characters/nv-fashi/idle", clip: "inbox/characters/nv-fashi/idle" },
+  { folder: "characters/nv-fashi/walking", clip: "inbox/characters/nv-fashi/walking" },
+  { folder: "characters/nv-fashi/attack", clip: "inbox/characters/nv-fashi/attack" },
+  { folder: "characters/nv-fashi/death", clip: "inbox/characters/nv-fashi/death" },
+  // Legacy shared slot (no character name) — still accepted
   { folder: "待机", clip: "inbox/base_animations/idle" },
   { folder: "走路", clip: "inbox/base_animations/walking" },
   { folder: "攻击", clip: "inbox/base_animations/attack" },
@@ -152,9 +162,10 @@ function isStill(token) {
   return STILL_ALIAS.has(fold(token)) || STILL_ALIAS.has(token);
 }
 
-function clipFor(anim, cosmetic) {
+function clipFor(anim, cosmetic, characterId) {
   if (anim === "stills") return "inbox/stills";
   if (cosmetic) return `inbox/cosmetics/${cosmetic}/${anim}`;
+  if (characterId) return `inbox/characters/${characterId}/${anim}`;
   return `inbox/base_animations/${anim}`;
 }
 
@@ -171,6 +182,11 @@ function parseFile(file) {
 
 function hitFromTokens(tokens, index, ext) {
   const parts = tokens.map(fold).filter(Boolean);
+  if (parts[0] === "characters" || parts[0] === "角色") {
+    const characterId = mapPlayerId(parts[1] ?? "");
+    const anim = mapAnim(parts[2] ?? "");
+    if (characterId && anim) return { clip: clipFor(anim, null, characterId), index, ext };
+  }
   if (parts[0] === "base-animations" || parts[0] === "base_animations") {
     const anim = mapAnim(parts[1] ?? "");
     if (!anim) return null;
@@ -193,6 +209,21 @@ function hitFromTokens(tokens, index, ext) {
     if (anim) return { clip: clipFor(anim), index, ext };
   }
   return null;
+}
+
+const PLAYER_ID_ALIAS = {
+  "nv-fashi": "nv-fashi",
+  fashi: "nv-fashi",
+  mage: "nv-fashi",
+  女法师: "nv-fashi",
+  女法: "nv-fashi",
+  法师: "nv-fashi",
+  法师1新: "nv-fashi",
+};
+
+function mapPlayerId(token) {
+  if (!token) return null;
+  return PLAYER_ID_ALIAS[fold(token)] ?? PLAYER_ID_ALIAS[token] ?? (/^[a-z0-9-]+$/i.test(token) ? fold(token) : null);
 }
 
 function mapChapter(token) {

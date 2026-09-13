@@ -133,9 +133,12 @@ export function StageRunway({
   const willFail = ratio < 0.55;
 
   const bg = useClip(backgroundClip(chapter));
-  const walk = useClip(layeredClips("walking", cosmetic).body, MAGE_WALK_CLIP);
-  const attack = useClip(layeredClips("attack", cosmetic).body);
-  const death = useClip(layeredClips("death", cosmetic).body);
+  const walkLayers = layeredClips("walking", cosmetic);
+  const attackLayers = layeredClips("attack", cosmetic);
+  const deathLayers = layeredClips("death", cosmetic);
+  const walk = useClip(walkLayers.body, walkLayers.bodyFallback || MAGE_WALK_CLIP);
+  const attack = useClip(attackLayers.body, attackLayers.bodyFallback);
+  const death = useClip(deathLayers.body, deathLayers.bodyFallback);
   const mobWalk = useClip(
     monsterChapterClip(chapter, monster.kind, "walking"),
     monsterClip(monster.kind, "walking"),

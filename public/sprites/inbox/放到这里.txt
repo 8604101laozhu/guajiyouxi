@@ -8,7 +8,9 @@ png / webp / gif / jpg 都可以。
 | 子文件夹 | 工作流 | 放什么 |
 | --- | --- | --- |
 | stills | 立绘 | 试色立绘 |
-| base_animations/{walking,attack,death} | 同一条 W2，只换 ANIMATION_NAME | 身体循环，空手 |
+| characters/nv-fashi/{walking,attack,death,idle}  ← 女法师（带角色名）
+| characters/<id>/{walking,attack,death,idle} | 其它玩家角色 | 先在 characters.ts 登记 |
+| base_animations/{walking,attack,death}（旧） | 同一条 W2，只换 ANIMATION_NAME | 身体循环，空手 |
 | cosmetics/staff/{walking,attack,death} | W4/W5，COSMETIC_NAME=staff | 法杖层，不要重出身体 |
 | cosmetics/sword/{walking,attack,death} | W4/W5，COSMETIC_NAME=sword | 剑层，不要重出身体 |
 

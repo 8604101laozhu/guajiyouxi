@@ -1,19 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
   allInboxClips,
+  baseAnimationDir,
   cosmeticDir,
   cosmeticFromWeaponClass,
-  baseAnimationDir,
   isAnimationName,
   isCosmeticName,
   layeredClips,
 } from "./catalog";
 
-describe("mor-o catalog paths", () => {
-  it("uses one W2 folder per ANIMATION_NAME", () => {
-    expect(baseAnimationDir("walking")).toBe("inbox/base_animations/walking");
-    expect(baseAnimationDir("attack")).toBe("inbox/base_animations/attack");
-    expect(baseAnimationDir("death")).toBe("inbox/base_animations/death");
+describe("named player catalog paths", () => {
+  it("puts the default player id in the body path", () => {
+    expect(baseAnimationDir("walking")).toBe("inbox/characters/nv-fashi/walking");
+    expect(baseAnimationDir("attack")).toBe("inbox/characters/nv-fashi/attack");
+    expect(baseAnimationDir("death")).toBe("inbox/characters/nv-fashi/death");
   });
 
   it("puts weapons under cosmetics/{COSMETIC_NAME}/{ANIMATION_NAME}", () => {
@@ -32,12 +32,13 @@ describe("mor-o catalog paths", () => {
   });
 
   it("does not create a separate unarmed cosmetic folder", () => {
-    expect(allInboxClips().some((c) => c.includes("unarmed"))).toBe(false);
+    expect(allInboxClips().some((c) => c.includes("/unarmed/"))).toBe(false);
   });
 
-  it("layers body and weapon without a second doll model", () => {
+  it("layers named body with legacy fallback and weapon", () => {
     expect(layeredClips("attack", "staff")).toEqual({
-      body: "inbox/base_animations/attack",
+      body: "inbox/characters/nv-fashi/attack",
+      bodyFallback: "inbox/base_animations/attack",
       weapon: "inbox/cosmetics/staff/attack",
     });
     expect(layeredClips("walking", "unarmed").weapon).toBeNull();

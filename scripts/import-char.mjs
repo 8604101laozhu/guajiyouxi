@@ -26,18 +26,54 @@ const configPath = path.join(repoRoot, "char-import.json");
 /** Studio root only — characters are subfolders. Edit char-import.json if yours differs. */
 export const DEFAULT_STUDIO_ROOT = String.raw`D:\ai炼丹\香草社\人物生成图`;
 
-/** Studio action folder → hero inbox clip. */
+/** Studio action folder → relative anim name under a character. */
+export const HERO_ACTION_ANIMS = {
+  待机: "idle",
+  idle: "idle",
+  stand: "idle",
+  走路: "walking",
+  walking: "walking",
+  walk: "walking",
+  攻击: "attack",
+  attack: "attack",
+  死亡: "death",
+  death: "death",
+};
+
+export const DEFAULT_PLAYER_ID = "nv-fashi";
+
+export const PLAYER_ALIASES = {
+  "nv-fashi": "nv-fashi",
+  fashi: "nv-fashi",
+  mage: "nv-fashi",
+  女法师: "nv-fashi",
+  女法: "nv-fashi",
+  法师: "nv-fashi",
+  法师1新: "nv-fashi",
+};
+
+export function resolveHeroClip(actionFolder, playerId = DEFAULT_PLAYER_ID) {
+  const key = actionFolder.trim();
+  const anim = HERO_ACTION_ANIMS[key] ?? HERO_ACTION_ANIMS[key.toLowerCase()];
+  if (!anim) {
+    if (key === "立绘" || key.toLowerCase() === "stills") return "inbox/stills";
+    return null;
+  }
+  return `inbox/characters/${playerId}/${anim}`;
+}
+
+/** @deprecated flat clips without character name — prefer resolveHeroClip */
 export const HERO_ACTION_CLIPS = {
-  待机: "inbox/base_animations/idle",
-  idle: "inbox/base_animations/idle",
-  stand: "inbox/base_animations/idle",
-  走路: "inbox/base_animations/walking",
-  walking: "inbox/base_animations/walking",
-  walk: "inbox/base_animations/walking",
-  攻击: "inbox/base_animations/attack",
-  attack: "inbox/base_animations/attack",
-  死亡: "inbox/base_animations/death",
-  death: "inbox/base_animations/death",
+  待机: "inbox/characters/nv-fashi/idle",
+  idle: "inbox/characters/nv-fashi/idle",
+  stand: "inbox/characters/nv-fashi/idle",
+  走路: "inbox/characters/nv-fashi/walking",
+  walking: "inbox/characters/nv-fashi/walking",
+  walk: "inbox/characters/nv-fashi/walking",
+  攻击: "inbox/characters/nv-fashi/attack",
+  attack: "inbox/characters/nv-fashi/attack",
+  死亡: "inbox/characters/nv-fashi/death",
+  death: "inbox/characters/nv-fashi/death",
   立绘: "inbox/stills",
   stills: "inbox/stills",
 };
@@ -66,13 +102,25 @@ export function normalizeFrameName(file) {
   return `${Number(match[1])}.${ext}`;
 }
 
-export function resolveActionClip(actionFolder, asRole) {
-  const key = actionFolder.trim();
-  const heroClip = HERO_ACTION_CLIPS[key] ?? HERO_ACTION_CLIPS[key.toLowerCase()];
-  if (!heroClip) return null;
-  if (asRole === "hero") return heroClip;
-  const anim = heroClip.split("/").at(-1);
-  if (anim === "stills") return `inbox/monsters/${asRole}/idle`;
+export function resolvePlayerId(nameOrId) {
+  if (!nameOrId) return DEFAULT_PLAYER_ID;
+  const raw = String(nameOrId).trim();
+  return (
+    PLAYER_ALIASES[raw] ??
+    PLAYER_ALIASES[raw.toLowerCase()] ??
+    (/^[a-z0-9-]+$/i.test(raw) ? raw.toLowerCase() : DEFAULT_PLAYER_ID)
+  );
+}
+
+export function resolveActionClip(actionFolder, asRole, playerId = DEFAULT_PLAYER_ID) {
+  if (asRole === "hero") return resolveHeroClip(actionFolder, playerId);
+  const anim = HERO_ACTION_ANIMS[actionFolder.trim()] ?? HERO_ACTION_ANIMS[actionFolder.trim().toLowerCase()];
+  if (!anim) {
+    if (actionFolder.trim() === "立绘" || actionFolder.trim().toLowerCase() === "stills") {
+      return `inbox/monsters/${asRole}/idle`;
+    }
+    return null;
+  }
   return `inbox/monsters/${asRole}/${anim}`;
 }
 
@@ -173,12 +221,17 @@ async function importPack(charDir, asRole) {
   if (!existsSync(charDir)) {
     throw new Error(`角色包不存在：${charDir}`);
   }
+  const charName = path.basename(charDir);
+  const playerId = asRole === "hero" ? resolvePlayerId(charName) : null;
+  if (asRole === "hero") {
+    console.log(`玩家角色目录: characters/${playerId}（${charName}）`);
+  }
   const entries = await readdir(charDir, { withFileTypes: true });
   const actions = entries.filter((d) => d.isDirectory()).map((d) => d.name);
   const copied = [];
 
   for (const action of actions) {
-    const clip = resolveActionClip(action, asRole);
+    const clip = resolveActionClip(action, asRole, playerId ?? DEFAULT_PLAYER_ID);
     if (!clip) {
       console.log(`跳过未识别动作文件夹：${action}`);
       continue;

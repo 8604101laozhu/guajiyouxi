@@ -58,7 +58,10 @@ export function SpriteWalkPreview({
   cosmetic: CosmeticName;
 }) {
   const layers = layeredClips(animation, cosmetic);
-  const fallback = animation === "walking" ? MAGE_WALK_CLIP : "";
+  const fallback =
+    animation === "walking"
+      ? layers.bodyFallback || MAGE_WALK_CLIP
+      : layers.bodyFallback;
   const bodyIndex = useClip(layers.body, fallback);
   const weaponIndex = useClip(layers.weapon);
   const [frame, setFrame] = useState(0);
@@ -125,9 +128,11 @@ export function SpriteWalkPreview({
           </>
         ) : (
           <p className="max-w-[18rem] px-3 text-center text-[12px] leading-5 text-[#8a7a5a]">
-            还没有 W2 身体帧。放到
+            还没有该角色身体帧。放到
             <br />
-            {`public/sprites/inbox/base_animations/${animation}/`}
+            {`public/sprites/inbox/characters/nv-fashi/${animation}/`}
+            <br />
+            <span className="text-[#6a5a40]">（女法师；其它角色换目录名）</span>
             {cosmetic !== "unarmed" ? (
               <>
                 <br />

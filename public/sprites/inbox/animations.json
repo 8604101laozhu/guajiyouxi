@@ -1,12 +1,22 @@
 {
   "pipeline": "mor-o/comfyui-2d-character-pipeline",
   "w2": {
-    "animation_names": ["walking", "attack", "death"],
-    "output": "inbox/base_animations/{ANIMATION_NAME}",
-    "note": "Same graph. Only ANIMATION_NAME changes. Body is unarmed. 16GB: run this first."
+    "animation_names": [
+      "walking",
+      "attack",
+      "death"
+    ],
+    "output": "inbox/characters/{CHARACTER_ID}/{ANIMATION_NAME}",
+    "note": "Same graph. Set CHARACTER_ID (e.g. nv-fashi for 女法师) and ANIMATION_NAME. Body is unarmed. Legacy inbox/base_animations still works as fallback.",
+    "characters": {
+      "nv-fashi": "女法师"
+    }
   },
   "w4": {
-    "cosmetic_names": ["staff", "sword"],
+    "cosmetic_names": [
+      "staff",
+      "sword"
+    ],
     "output": "inbox/cosmetics/{COSMETIC_NAME}/{ANIMATION_NAME}",
     "note": "Weapon layer only. Do not regenerate the body. Skip on 16GB; run later."
   }

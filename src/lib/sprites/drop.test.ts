@@ -6,6 +6,16 @@ import { ingestDrop, nextFrameIndex, resolveDropRel } from "./drop.mjs";
 
 describe("drop folder routing", () => {
   it("maps Chinese folders onto the official inbox", () => {
+    expect(resolveDropRel("角色/女法师/走路/0.png")).toEqual({
+      clip: "inbox/characters/nv-fashi/walking",
+      index: 0,
+      ext: "png",
+    });
+    expect(resolveDropRel("characters/nv-fashi/attack/3.webp")).toEqual({
+      clip: "inbox/characters/nv-fashi/attack",
+      index: 3,
+      ext: "webp",
+    });
     expect(resolveDropRel("走路/0.png")).toEqual({
       clip: "inbox/base_animations/walking",
       index: 0,
