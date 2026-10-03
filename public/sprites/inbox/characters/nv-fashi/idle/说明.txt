@@ -1,0 +1,13 @@
+动作：待机（idle）
+帧数：9
+尺寸：608x768 PNG，透明底，脚底对齐
+建议：12 fps 循环播放
+
+纸娃娃：角色身体在这套序列帧里。武器是右手插槽，
+同角色其它动作在上一级文件夹的「待机 / 走路 / 攻击 / 死亡」。
+
+Godot 4：新建 SpriteFrames，把 00.png 起按顺序拖进去，
+挂到 AnimatedSprite2D，Animation Speed 填 12。走路、待机勾选循环；攻击、死亡不循环。
+
+Unity：选中这些 PNG，Texture Type = Sprite (2D and UI)，
+Pivot 设 Bottom，再做成 Animation Clip，Sample 12。

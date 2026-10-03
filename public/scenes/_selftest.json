@@ -1,0 +1,15 @@
+{
+  "_note": "自检场景：故意混入坏数据，用来验证「模块加载失败不拖垮主程序」这条铁律。",
+  "_expect": "屏幕上应有 1 个绿史莱姆 + 1 个洋红占位方块 + 2 个史莱姆；右上角红条显示 ⚠ 4 个模块失败；F1 面板列出 4 条原因。",
+  "version": 1,
+  "name": "selftest 故意坏掉",
+  "bounds": { "w": 1200, "h": 260, "groundY": 206 },
+  "layers": ["sky", "mid", "ground", "entity", "fx", "ui"],
+  "objects": [
+    { "id": "ok_slime", "model": "slime", "x": 220, "y": 206, "params": { "color": 0 } },
+    { "id": "missing_model", "model": "dragon", "x": 560, "y": 206, "params": { "color": 1 } },
+    { "id": "no_model_field", "x": 820, "y": 206 },
+    { "id": "bad_layer", "model": "slime", "x": 1020, "y": 206, "layer": "ghost_layer", "params": { "color": 2 } },
+    { "id": "bad_param", "model": "slime", "x": 1120, "y": 206, "params": { "color": "red" } }
+  ]
+}

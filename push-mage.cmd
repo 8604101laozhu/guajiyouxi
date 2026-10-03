@@ -41,6 +41,34 @@ if not exist "%SRC%\" (
   goto END
 )
 
+REM ---- 投放门禁：W3 必过。真透明 PNG 不达标就不许投放 ----
+set GATEPY=
+if defined XIANGCAO_TOOLKIT (
+  if exist "%XIANGCAO_TOOLKIT%\comfyui\python_embeded\python.exe" set GATEPY=%XIANGCAO_TOOLKIT%\comfyui\python_embeded\python.exe
+)
+if not defined GATEPY if exist "F:\BaiduNetdisk\minimax\MiniMaxH3\ben-M3-V03\ben-M3-V03\comfyui\python_embeded\python.exe" (
+  set GATEPY=F:\BaiduNetdisk\minimax\MiniMaxH3\ben-M3-V03\ben-M3-V03\comfyui\python_embeded\python.exe
+)
+if not defined GATEPY (
+  where python >nul 2>nul && set GATEPY=python
+)
+if not defined GATEPY (
+  echo FAIL: 找不到 python，无法跑投放门禁。
+  goto END
+)
+
+echo ---- 投放门禁：透明底检查 ----
+"%GATEPY%" "scripts\check-sprite-alpha.py" "%SRC%" --quiet
+if errorlevel 1 (
+  echo.
+  echo FAIL: 透明底验收未过（W3 没跑好）—— 已阻止投放。
+  echo 回动作循环页面重跑 W3 BiRefNet，再导出一次。
+  echo 糊进角色轮廓的脏边，在游戏里补抠救不回来。
+  goto END
+)
+echo OK: 透明底验收通过
+echo.
+
 set DST=public\sprites\inbox\base_animations
 mkdir "%DST%\walking" 2>nul
 mkdir "%DST%\attack" 2>nul

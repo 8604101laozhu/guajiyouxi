@@ -8,10 +8,13 @@
     "start": "next start --port 43147",
     "lint": "eslint",
     "test": "vitest run",
+    "smoke": "node scripts/smoke.mjs",
     "drop": "node scripts/drop.mjs",
     "drop:watch": "node scripts/drop.mjs --watch",
     "drop:push": "node scripts/drop.mjs --push",
-    "import:char": "node scripts/import-char.mjs"
+    "import:char": "node scripts/import-char.mjs",
+    "desk": "electron electron/main.cjs",
+    "selfhost:fonts": "node scripts/selfhost-fonts.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -29,6 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "electron": "^44.5.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",

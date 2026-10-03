@@ -2,6 +2,52 @@
 
 以后都在这个工程里跑。暗黑 2 装备底子 + 手游关卡梯度。立绘和循环帧放 `public/sprites`。
 
+**玩法形态：自动战斗挂机 —— 角色自己索敌、走位、开火（近战贴身挥砍 / 远程放弹道），不用你操作。**
+你只需要看波次、看掉落、调装备和天赋。战斗内核在 `src/game/ai.ts`、`combat.ts`、`waves.ts`。
+
+## 改完怎么验（一条命令）
+
+```bash
+npm run smoke            # 12 项 / ~90s：静态 4 项 + 真窗口 8 项，全绿才算改完
+npm run smoke -- --fast  # 只跑静态 4 项 ~12s（改完先跑这个）
+```
+
+细节见 `docs/冒烟测试.md`。每项输出落 `temp/smoke/*.log`。
+
+## 怎么打开（桌面条窗口）
+
+**双击 `打开游戏.cmd`** 就行 —— 它会自己检查 45231 端口，没起就起 `next dev`（新窗口里跑），然后打开贴屏幕底部的游戏条。
+
+手动开（两个终端）：
+
+```bash
+cd G:\guajiyouxi\guajiyouxi
+node_modules\.bin\next.cmd dev --port 45231 --hostname 127.0.0.1   # 终端 A：网页
+npm run desk                                                       # 终端 B：桌面条
+```
+
+| 操作 | 作用 |
+| --- | --- |
+| **长按画面 0.35 秒** | **拖动整条窗口**（普通点击不受影响；拖动中按 `Esc` 取消） |
+| `Ctrl+Alt+S` | 窗口复位回屏幕底部居中 |
+| `Ctrl+Alt+Q` | 退出游戏条 |
+| `Ctrl+Alt+D` | 点击穿透（挂机时鼠标穿过它） |
+| `Ctrl+Alt+T` | 切换置顶 |
+| `Ctrl+Alt+R` | 重载 |
+
+窗口会**记住你拖到的位置**，下次打开回到原位（想从底部重新开始就 `set DESK_FORGET_POS=1` 再启动）。
+拖出屏幕也没关系：位置会被夹回当前显示器的工作区（任务栏以外的区域），不会丢。
+
+游戏内 `F1` 是调试面板（`1` 碰撞盒 / `2` 网格 / `3` 光影 / `4` 刷实体 / `+`-` 倍速）。
+内核架构、加模型的步骤、踩过的坑见 [`docs/内核骨架.md`](docs/内核骨架.md) 与 [`docs/踩坑记录.md`](docs/踩坑记录.md)。
+
+```bash
+npm run desk                  # 只开桌面条窗口
+DESK_SHOT=temp/shot.png npm run desk   # 截图后自动退出（无人值守看效果）
+npm test                      # 全量测试（应 14 文件 / 80 用例全绿）
+```
+
+
 角色动画接 [mor-o/comfyui-2d-character-pipeline](https://github.com/mor-o/comfyui-2d-character-pipeline)，**没有单独的攻击/死亡工作流，也不另做一套纸娃娃模型**。
 
 - 走路 / 攻击 / 死亡：同一条 **W2**，只换 `ANIMATION_NAME`

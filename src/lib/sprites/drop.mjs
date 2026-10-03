@@ -299,6 +299,12 @@ function hitFromPrefix(prefix, index, ext) {
   return null;
 }
 
+/**
+ * 背景命中会带上 destName（重命名后的目标文件名），其它命中只有 clip/index/ext，
+ * 所以 destName 是可选的 —— 这里显式标注，避免 tsc 把返回类型收窄成没有 destName 的那一支。
+ * @param {string} rel
+ * @returns {{ clip: string, index: number|null, ext: string, destName?: string } | null}
+ */
 export function resolveDropRel(rel) {
   const posix = toPosix(rel);
   if (!posix || posix.endsWith("/")) return null;

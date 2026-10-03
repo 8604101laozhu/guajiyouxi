@@ -53,6 +53,32 @@ if (-not $walk) {
   exit 1
 }
 
+# ---- 投放门禁：W3 必过。真透明 PNG 不达标就不许投放 ----
+$gatePy = $null
+if ($env:XIANGCAO_TOOLKIT) {
+  $cand = Join-Path $env:XIANGCAO_TOOLKIT "comfyui\python_embeded\python.exe"
+  if (Test-Path -LiteralPath $cand) { $gatePy = $cand }
+}
+if (-not $gatePy) {
+  $cand = "F:\BaiduNetdisk\minimax\MiniMaxH3\ben-M3-V03\ben-M3-V03\comfyui\python_embeded\python.exe"
+  if (Test-Path -LiteralPath $cand) { $gatePy = $cand }
+}
+if (-not $gatePy) { $gatePy = "python" }
+
+$gate = Join-Path $PSScriptRoot "scripts\check-sprite-alpha.py"
+Log ""
+Log "---- 投放门禁：透明底检查 ----"
+& $gatePy $gate $src --quiet
+if ($LASTEXITCODE -ne 0) {
+  Log ""
+  Log "FAIL: 透明底验收未过（W3 没跑好）—— 已阻止投放。"
+  Log "回动作循环页面重跑 W3 BiRefNet，再导出一次。"
+  Log "糊进角色轮廓的脏边，在游戏里补抠救不回来。"
+  exit 1
+}
+Log "OK: 透明底验收通过"
+Log ""
+
 $dstRoot = Join-Path $PSScriptRoot "public\sprites\inbox\base_animations"
 $map = @{
   walking = $walk

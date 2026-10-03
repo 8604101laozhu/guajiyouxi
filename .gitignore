@@ -41,6 +41,9 @@ drop.json
 # local zip download (too large for git; served from the running app)
 /public/*.zip
 
+# 冒烟测试产物（截图 / 日志，每次 npm run smoke 重写，12MB 级）
+/temp/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
