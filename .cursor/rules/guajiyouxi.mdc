@@ -1,6 +1,6 @@
 ---
 description: guajiyouxi 的角色定位、技术栈与硬性红线（全文见 docs/编程规范.md）
-alwaysApply: true
+alwaysApply: false
 ---
 
 # 你的角色：设计总负责人 + 记录者
