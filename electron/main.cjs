@@ -23,13 +23,42 @@ const { createTray, destroyTray, refreshTray } = require("./tray.cjs");
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 /**
- * DESK_USER_DATA=路径 → 把窗口状态/缓存写到别处。
- * 冒烟测试用：自检会真的拖窗口、真的切置顶，如果共用用户的 userData，
- * 跑一次测试就把用户记住的位置/偏好写坏了（真踩过：条被挪到两块屏之间的死区，人都看不见了）。
- * 必须在 whenReady 之前设。
+ * userData 放哪 —— 必须在 whenReady 之前定。
+ *
+ * ① 冒烟测试会传 `DESK_USER_DATA`：自检真的拖窗口、真的切置顶，共用用户目录会把用户记住的
+ *    位置/偏好写坏（真踩过：条被挪到两块屏之间的死区，人都看不见了）。
+ *
+ * ② 平时必须给**应用自己的**目录。不指定的话 Electron 会退回 `%APPDATA%\Electron` ——
+ *    那是所有「直接 `electron xxx.cjs` 启动」的应用**共用**的目录，Chromium 缓存会互相抢，
+ *    表现就是每次启动刷一串「Unable to move the cache: 拒绝访问 (0x5)」。
+ *    顺带也把我们的 desk-window.json 从那个公共目录里摘出来。
  */
 const USER_DATA = process.env.DESK_USER_DATA;
-if (USER_DATA) app.setPath("userData", path.resolve(USER_DATA));
+if (USER_DATA) {
+  app.setPath("userData", path.resolve(USER_DATA));
+} else {
+  app.setPath("userData", path.join(app.getPath("appData"), "guajiyouxi"));
+}
+
+/**
+ * 第一次切到自己的 userData 时，把旧的窗口状态从公共目录**搬**过来（读-改-写，不删旧文件）。
+ * 迁移失败不算事：位置退回默认值，条照样能用（本工程铁律：这里绝不崩）。
+ */
+function migrateLegacyWindowState() {
+  if (USER_DATA) return; // 测试专用目录不掺和迁移
+  const legacy = path.join(app.getPath("appData"), "Electron", "desk-window.json");
+  const target = posFile();
+  try {
+    if (fs.existsSync(target) || !fs.existsSync(legacy)) return;
+    const old = JSON.parse(fs.readFileSync(legacy, "utf8"));
+    if (old && typeof old === "object" && !Array.isArray(old)) {
+      mergeState(target, old, fs);
+      console.log("[desk] 窗口状态已从 %APPDATA%\\Electron 迁到 guajiyouxi");
+    }
+  } catch (err) {
+    console.warn("[desk] 旧窗口状态迁移失败（不影响使用）：", err.message);
+  }
+}
 
 /** DESK_BG_ALPHA=0~1 → 天空不透明度（含远山；默认 0.62，游戏内 [ / ] 可调） */
 const BG_ALPHA = process.env.DESK_BG_ALPHA;
@@ -1157,6 +1186,8 @@ ipcMain.handle("desk:close", () => {
 });
 
 app.whenReady().then(() => {
+  // 先把旧的窗口状态搬过来（一次性的；没有旧文件就是空转）
+  migrateLegacyWindowState();
   createWindow();
 
   // 托盘图标：条收起来之后唯一的入口。必须在 createWindow 之后建 ——

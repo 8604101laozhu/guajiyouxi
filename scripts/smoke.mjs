@@ -27,7 +27,9 @@ const SHOT_DIR = "temp/smoke";
  * （真踩过：条被挪到两块屏之间的死区 x=2560，用户根本看不见它了）。
  */
 const SMOKE_USER_DATA = path.join(
-  // 不能放仓库里（G 盘那个目录 Chromium 挪缓存会报「拒绝访问 0x5」，和 dsh 的 ACL 坑同源）
+  // 测试专用目录：和用户真实的 userData 分开，否则跑一次冒烟就把用户记住的条位置/置顶偏好写坏。
+  // 为什么落在 LOCALAPPDATA —— 见 docs/踩坑记录.md 第 20 条（旧注释里「G 盘挪缓存报拒绝访问」
+  // 那条归因是错的，真因是多个 Electron 实例共用 `%APPDATA%\Electron`）。
   process.env.LOCALAPPDATA || process.env.TEMP || path.join(ROOT, "temp"),
   "guajiyouxi-smoke",
   "userdata",
