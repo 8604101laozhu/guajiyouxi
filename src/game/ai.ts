@@ -14,12 +14,18 @@ import {
   spawnProjectile,
   unitAlive,
 } from "./combat";
+import { travelSpeed } from "./stage";
 
 export type AiContext = {
   bounds: SceneLayout["bounds"];
   models: Map<string, ModelDef>;
   /** 英雄没目标时继续向右推图（挂机时的「自动前进」开关） */
   advance: boolean;
+  /**
+   * 英雄**钉在原地**：不推图也不追人（固定舞台 —— 怪从右边走进来，交战点永远在画面中间）。
+   * 开了它，`advance` 对英雄就没作用了。
+   */
+  holdPost?: boolean;
   /** 复活等待秒数 */
   reviveDelay?: number;
   /**
@@ -107,8 +113,8 @@ export function updateUnits(world: World, dt: number, ctx: AiContext): AiResult 
     const target = nearestOpponent(world, e);
 
     if (!target) {
-      // 没敌人：英雄继续推图，怪站着（怪的推进由刷怪器负责）
-      if (unit.team === "hero" && ctx.advance) {
+      // 没敌人：英雄继续推图，怪站着（怪的推进由刷怪器负责）；holdPost 的英雄守桩不动
+      if (unit.team === "hero" && ctx.advance && !ctx.holdPost) {
         unit.facing = 1;
         advance(world, e, 1, unit.speed * 0.55 * dt, dt, boundsOr(ctx));
       }
@@ -118,11 +124,17 @@ export function updateUnits(world: World, dt: number, ctx: AiContext): AiResult 
     const dx = target.pos.x - e.pos.x;
     unit.facing = dx >= 0 ? 1 : -1;
     const dist = Math.abs(dx);
+    /** 守桩的英雄不追人（怪会自己走过来）—— 固定舞台的关键 */
+    const holds = unit.team === "hero" && !!ctx.holdPost;
 
     if (dist > unit.range) {
+      if (holds) continue;
       // 贴近到「够得着 + 一点余量」，别贴在对方脸上抖
       const gap = unit.range * 0.9;
-      if (dist - gap > 2) advance(world, e, unit.facing, unit.speed * dt, dt, boundsOr(ctx));
+      if (dist - gap > 2) {
+        // 远处赶路用「进场速度」：d2 给的速度太慢，从画面右边缘走到中间要 20 秒以上
+        advance(world, e, unit.facing, travelSpeed(unit.speed, dist) * dt, dt, boundsOr(ctx));
+      }
       continue;
     }
 

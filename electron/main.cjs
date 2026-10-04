@@ -12,7 +12,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createDragController } = require("./drag.cjs");
 const { clampToWorkArea, bottomRestingPos } = require("./drag-math.cjs");
-const { createOnTopKeeper, readOnTopPref, writeOnTopPref } = require("./ontop.cjs");
+const { createOnTopKeeper, readOnTopPref, writeOnTopPref, mergeState } = require("./ontop.cjs");
 
 /**
  * 桌面条是"没人点过"的窗口：Chromium 的自动播放策略会把 AudioContext 一直挂在 suspended，
@@ -20,6 +20,15 @@ const { createOnTopKeeper, readOnTopPref, writeOnTopPref } = require("./ontop.cj
  * 代码里仍保留"首次按键/点击时 resume()"的兜底（见 src/game/audio.ts 的 unlock()）。
  */
 app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
+
+/**
+ * DESK_USER_DATA=路径 → 把窗口状态/缓存写到别处。
+ * 冒烟测试用：自检会真的拖窗口、真的切置顶，如果共用用户的 userData，
+ * 跑一次测试就把用户记住的位置/偏好写坏了（真踩过：条被挪到两块屏之间的死区，人都看不见了）。
+ * 必须在 whenReady 之前设。
+ */
+const USER_DATA = process.env.DESK_USER_DATA;
+if (USER_DATA) app.setPath("userData", path.resolve(USER_DATA));
 
 /** DESK_BG_ALPHA=0~1 → 天空不透明度（含远山；默认 0.62，游戏内 [ / ] 可调） */
 const BG_ALPHA = process.env.DESK_BG_ALPHA;
@@ -31,12 +40,18 @@ const ALPHA_CHECK = process.env.DESK_ALPHA_CHECK === "1";
 const ERR_CHECK = process.env.DESK_ERR_CHECK === "1";
 /** DESK_ONTOP_CHECK=1 → 验置顶开关：关得掉 / 开得回 / 关了透明没坏 / 偏好落盘 / 被顶掉能自己补回来 */
 const ONTOP_CHECK = process.env.DESK_ONTOP_CHECK === "1";
+/** DESK_OFFLINE_CHECK=1 → 种一份「3 小时前」的存档再重载，验离线收益补发 + 进度还原 + 自动落盘 */
+const OFFLINE_CHECK = process.env.DESK_OFFLINE_CHECK === "1";
+/** DESK_FRESH=1 → 载入时忽略存档（冒烟给所有探针默认开，保证从干净状态开始；离线自检自己关掉） */
+const FRESH = process.env.DESK_FRESH === "1";
 const GAME_URL = (() => {
   const base = process.env.GAME_URL || "http://127.0.0.1:45231/desk";
-  if (BG_ALPHA === undefined && GROUND_ALPHA === undefined) return base;
+  if (BG_ALPHA === undefined && GROUND_ALPHA === undefined && !FRESH && !OFFLINE_CHECK) return base;
   const u = new URL(base);
   if (BG_ALPHA !== undefined) u.searchParams.set("bgAlpha", BG_ALPHA);
   if (GROUND_ALPHA !== undefined) u.searchParams.set("groundAlpha", GROUND_ALPHA);
+  // 离线自检的第一页也要 fresh：它只负责「种档」，不能写盘（否则 pagehide 会把种好的档冲掉）
+  if (FRESH || OFFLINE_CHECK) u.searchParams.set("fresh", "1");
   return u.toString();
 })();
 const HEIGHT = Number(process.env.DESK_HEIGHT || 260);
@@ -74,6 +89,8 @@ const FIXED_CURSOR = (() => {
 let win = null;
 let clickThrough = false;
 let drag = null;
+/** 渲染进程最近的 console 输出（自检用：有些断言只能看游戏自己说了什么） */
+const rendererLines = [];
 /** 置顶保持器（被别的 topmost 窗口顶掉时自己补回来） */
 let keeper = null;
 
@@ -93,7 +110,9 @@ function loadSavedPos() {
 function savePos(pos) {
   try {
     fs.mkdirSync(path.dirname(posFile()), { recursive: true });
-    fs.writeFileSync(posFile(), JSON.stringify(pos));
+    // 读-改-写：只更新位置。真踩过：这里原来是 JSON.stringify(pos) 整份覆盖，
+    // 拖一下窗口就把 alwaysOnTop 偏好写没了（两个写入方互相踩）
+    mergeState(posFile(), { x: pos.x, y: pos.y }, fs);
   } catch (err) {
     console.error("[desk] 记不住位置：", err.message);
   }
@@ -179,9 +198,13 @@ function createWindow() {
     if (isErr || /^\[(game|desk)\]/.test(msg)) {
       console.log(`[renderer${isErr ? ":ERR" : ""}] ${msg}`);
     }
+    // 记一份给自检用：有些断言只能看「游戏自己说了什么」（开发模式下 React 会把 boot 跑两次，
+    // 第二次读到的存档已经是第一次 stop() 写回去的，句柄里的 offline 就看不出来了）
+    rendererLines.push(msg);
+    if (rendererLines.length > 200) rendererLines.shift();
   });
-  // 注意：注入块/飘字块自己会截图 + 退出，别让这个自动截图块（2.5s 就 app.quit）抢跑
-  if (SHOT && !LOOT_INJECT && !FLOAT_CHECK) {
+  // 注意：注入块/飘字块/离线块自己会截图 + 退出，别让这个自动截图块（2.5s 就 app.quit）抢跑
+  if (SHOT && !LOOT_INJECT && !FLOAT_CHECK && !OFFLINE_CHECK) {
     win.webContents.once("did-finish-load", () => {
       setTimeout(async () => {
         // DESK_SHOT_FX=1：截图前注入一发弹道 + 一个挥砍弧（0.18s 的特效，等不到，只能造）
@@ -309,51 +332,165 @@ function createWindow() {
         // 启动时必须按「上次的记忆」来（用户上次关掉过就保持关着），所以这里不硬性要求初始是开
         const prefBefore = readOnTopPref(posFile(), fs, true);
         const before = { onTop: win.isAlwaysOnTop(), alpha: await win.webContents.executeJavaScript(alphaProbe) };
-        // ① 走界面真正用的那条路（IPC）关掉 —— 验的是「开关」不是「直接调 win 的方法」
-        const offReturn = await win.webContents.executeJavaScript(`window.deskBar.setOnTop(false)`);
-        await sleep(600);
-        const afterOff = { onTop: win.isAlwaysOnTop(), alpha: await win.webContents.executeJavaScript(alphaProbe) };
-        const prefAfterOff = readOnTopPref(posFile(), fs, true);
-        const chipOff = await win.webContents.executeJavaScript(chipProbe);
-        // ② 再开回来
-        await win.webContents.executeJavaScript(`window.deskBar.setOnTop(true)`);
-        await sleep(600);
-        const afterOn = win.isAlwaysOnTop();
-        const chipOn = await win.webContents.executeJavaScript(chipProbe);
-        // ③ 心跳：绕过 keeper 直接把它顶下去（模拟被别的 topmost 窗口抢占），看它自己补不补
+        // ① 真的用鼠标点那个按钮 —— 不是直接调 window.deskBar.setOnTop：
+        //    直接调 API 会漏掉「按钮点不动」这一整类 bug（通道没注册、命中测试被挡、preload 是旧版…），
+        //    用户实际遇到的就是这个（快捷键能用、点按钮没反应）。
+        //    **断言只看「翻过去了没有」**：起始状态取决于上次记忆，可能是开也可能是关。
+        const chipPoint = await win.webContents.executeJavaScript(`(() => {
+          const b = document.querySelector("[data-ontop]");
+          if (!b) return null;
+          const r = b.getBoundingClientRect();
+          return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+        })()`);
+        if (!chipPoint) throw new Error("找不到置顶按钮 [data-ontop]");
+        const realClick = async () => {
+          win.webContents.sendInputEvent({ type: "mouseDown", x: chipPoint.x, y: chipPoint.y, button: "left", clickCount: 1 });
+          win.webContents.sendInputEvent({ type: "mouseUp", x: chipPoint.x, y: chipPoint.y, button: "left", clickCount: 1 });
+          await sleep(700);
+        };
+        console.log(`[desk] 真鼠标点置顶按钮 @(${chipPoint.x}, ${chipPoint.y})（起始 ${before.onTop ? "开" : "关"}）`);
+        await realClick();
+        const first = { onTop: win.isAlwaysOnTop(), alpha: await win.webContents.executeJavaScript(alphaProbe), chip: await win.webContents.executeJavaScript(chipProbe) };
+        const prefAfterFirst = readOnTopPref(posFile(), fs, true);
+        await realClick();
+        const second = { onTop: win.isAlwaysOnTop(), chip: await win.webContents.executeJavaScript(chipProbe) };
+        // ② 心跳：先确保它是开着的（不管前面翻到哪个状态），再绕过 keeper 直接顶下去
+        setOnTop(true, "自检");
         win.setAlwaysOnTop(false, "screen-saver");
         const stolenAt = Date.now();
         while (Date.now() - stolenAt < 5000 && !win.isAlwaysOnTop()) await sleep(150);
         const restored = win.isAlwaysOnTop();
         const restoreMs = Date.now() - stolenAt;
-        // ④ 自检完把用户的偏好还原（别让一次冒烟改了人家记住的设置）
+        // ③ 自检完把用户的偏好还原（别让一次冒烟改了人家记住的设置）
         setOnTop(prefBefore, "自检还原");
 
         const close = (a, b) => Math.abs((a ?? -999) - (b ?? -999)) <= 8;
-        const alphaOk = !!before.alpha && !!afterOff.alpha && close(before.alpha.sky, afterOff.alpha.sky) && close(before.alpha.ground, afterOff.alpha.ground);
-        const offOk = offReturn === false && afterOff.onTop === false;
-        const onOk = afterOn === true;
-        const prefOk = prefAfterOff === false;
+        const alphaOk = !!before.alpha && !!first.alpha && close(before.alpha.sky, first.alpha.sky) && close(before.alpha.ground, first.alpha.ground);
+        // 点一下翻过去、再点翻回来（不假设起始状态是开还是关）
+        const flipOk = first.onTop === !before.onTop && second.onTop === before.onTop;
+        const prefOk = prefAfterFirst === first.onTop; // 落盘跟随实际状态
         // 启动时按记忆来（初始状态 == 文件里存的偏好）
         const memoryOk = before.onTop === prefBefore;
-        // 按钮文字要跟着翻转（开→关→开），否则就是「状态切了、界面没跟」
-        const chipOk = !!chipBefore && chipBefore.attr === "on" && !!chipOff && chipOff.attr === "off" && !!chipOn && chipOn.attr === "on";
+        // 按钮文字要跟着状态走（否则就是「状态切了、界面没跟」）
+        const chipOk =
+          !!chipBefore &&
+          !!first.chip &&
+          !!second.chip &&
+          first.chip.attr === (first.onTop ? "on" : "off") &&
+          second.chip.attr === (second.onTop ? "on" : "off") &&
+          first.chip.attr !== chipBefore.attr;
         const f = (v) => (v === null || v === undefined ? "n/a" : v.toFixed(1));
         console.log(
-          `[desk] 置顶开关：初始 ${before.onTop ? "开" : "关"} → 关（IPC 返回 ${offReturn}，实际 ${afterOff.onTop ? "开" : "关"}）→ 开（实际 ${afterOn ? "开" : "关"}）`,
+          `[desk] 置顶开关：鼠标点一下 → ${first.onTop ? "开" : "关"}（期望 ${!before.onTop ? "开" : "关"}）→ 再点 → ${second.onTop ? "开" : "关"}（期望 ${before.onTop ? "开" : "关"}）`,
         );
         console.log(
-          `[desk] 透明对比：关之前 天空 ${f(before.alpha?.sky)} 地面 ${f(before.alpha?.ground)} / 关之后 天空 ${f(afterOff.alpha?.sky)} 地面 ${f(afterOff.alpha?.ground)}（允许 ±8）`,
+          `[desk] 透明对比：点之前 天空 ${f(before.alpha?.sky)} 地面 ${f(before.alpha?.ground)} / 点之后 天空 ${f(first.alpha?.sky)} 地面 ${f(first.alpha?.ground)}（允许 ±8）`,
         );
-        console.log(`[desk] 偏好落盘：关掉后文件里 alwaysOnTop=${prefAfterOff}；被顶掉 ${restoreMs}ms 后自己补回来=${restored}`);
-        console.log(`[desk] 界面按钮：「${chipBefore?.text ?? "无"}」→「${chipOff?.text ?? "无"}」→「${chipOn?.text ?? "无"}」`);
-        const ok = memoryOk && offOk && onOk && prefOk && alphaOk && chipOk && restored && restoreMs <= 5000;
+        console.log(`[desk] 偏好落盘：点完文件里 alwaysOnTop=${prefAfterFirst}；被顶掉 ${restoreMs}ms 后自己补回来=${restored}`);
+        console.log(`[desk] 界面按钮：「${chipBefore?.text ?? "无"}」→「${first.chip?.text ?? "无"}」→「${second.chip?.text ?? "无"}」`);
+        const ok = memoryOk && flipOk && prefOk && alphaOk && chipOk && restored && restoreMs <= 5000;
         console.log(
-          `[desk] 置顶开关自检：${ok ? "通过" : "失败"}（按记忆启动=${memoryOk} 关得掉=${offOk} 开得回=${onOk} 按钮跟着翻=${chipOk} 偏好落盘=${prefOk} 关了透明没坏=${alphaOk} 被顶掉能补回=${restored} 已还原偏好=${prefBefore}）`,
+          `[desk] 置顶开关自检：${ok ? "通过" : "失败"}（按记忆启动=${memoryOk} 点一下能翻=${flipOk} 按钮跟着走=${chipOk} 偏好落盘=${prefOk} 透明没坏=${alphaOk} 被顶掉能补回=${restored} 已还原偏好=${prefBefore}）`,
         );
         app.exit(ok ? 0 : 1);
       } catch (err) {
         console.error("[desk] 置顶开关自检出错：", err.message);
+        app.exit(1);
+      }
+    });
+  }
+  if (OFFLINE_CHECK) {
+    win.webContents.once("did-finish-load", async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      try {
+        // ① 种一份「3 小时前」的存档：进度（第 4 波 / 500 金币 / 120 击杀）+ 上次会话实测速率
+        const bytes = await win.webContents.executeJavaScript(`(() => {
+          const save = {
+            version: 1,
+            now: Date.now() - 3 * 3600 * 1000,
+            wave: 4,
+            kills: 120,
+            gold: 500,
+            missTotal: 3,
+            items: [],
+            lootCount: { normal: 2, magic: 0, rare: 0, unique: 0 },
+            potions: [2, 2, 2],
+            lastDrop: null,
+            offlineCapMinutes: 20,
+            goldPerMinute: 42,
+            killsPerMinute: 9,
+          };
+          localStorage.removeItem("guajiyouxi-save-v1"); // 先清掉上一项可能留下的
+          localStorage.setItem("guajiyouxi-save-v1", JSON.stringify(save));
+          return localStorage.getItem("guajiyouxi-save-v1").length;
+        })()`);
+        console.log(`[desk] 种入存档 ${bytes} 字节（时间戳 = 3 小时前）→ 以 fresh=0 重新载入，这一轮会读档 + 结算离线收益`);
+        // ② 用 fresh=0 重新载入（第一页是 fresh=1，不写盘，所以种进去的档不会被冲掉）
+        const next = new URL(GAME_URL);
+        next.searchParams.set("fresh", "0");
+        win.loadURL(next.toString());
+        await new Promise((r) => win.webContents.once("did-finish-load", r));
+        await sleep(Number(process.env.DESK_OFFLINE_AFTER || 2500));
+        const s = await win.webContents.executeJavaScript(`(() => {
+          const g = window.__game;
+          if (!g) return null;
+          return {
+            offline: g.offline,
+            gold: g.stats.gold,
+            wave: g.stats.wave,
+            kills: g.stats.kills,
+            errors: g.ledger.count,
+            bag: g.lootBag.length,
+          };
+        })()`);
+        // ③ 强制落盘一次，验自动存档真的写进去了（并顺手把这次的进度写回存档）
+        const wrote = await win.webContents.executeJavaScript(`window.__game.persist()`);
+        await sleep(400);
+        const after = await win.webContents.executeJavaScript(`(() => {
+          try {
+            const o = JSON.parse(localStorage.getItem("guajiyouxi-save-v1"));
+            return { ok: true, gold: o.gold, wave: o.wave, now: o.now, hasRate: typeof o.goldPerMinute === "number" };
+          } catch (e) {
+            return { ok: false, why: String(e) };
+          }
+        })()`);
+        // ④ 清掉存档：别让这份种进去的进度污染后面的探针
+        await win.webContents.executeJavaScript(`localStorage.removeItem("guajiyouxi-save-v1")`);
+
+        const o = s?.offline;
+        const expectGold = 42 * 20; // 42 金币/分 × 上限 20 分钟
+        // 权威证据是游戏自己打的那行日志（句柄里的 offline 在开发模式下会失真，见 rendererLines 的注释）
+        const settled = rendererLines.filter((l) => l.includes("离线结算：")).pop() || "";
+        const m = /离开 (.+?)（上限 (.+?)）\s*→ \+(\d+) 金币 \/ \+(\d+) 击杀/.exec(settled);
+        const logOk = !!m && m[1] === "3 小时" && m[2] === "20 分钟" && Number(m[3]) === expectGold && Number(m[4]) === 180;
+        const ok =
+          !!s &&
+          s.gold >= 500 + expectGold && // 存档里的 500 要留住 + 补发
+          s.kills >= 120 + 180 && // 离线击杀也要进账
+          s.wave >= 4 && // 进度（关卡）要还原
+          s.errors === 0 &&
+          wrote === true &&
+          after.ok === true &&
+          after.gold === s.gold &&
+          after.hasRate === true &&
+          logOk;
+        console.log(`[desk] 游戏日志：${settled || "（没看到离线结算那行！）"}`);
+        console.log(
+          `[desk] 离线结算：离开 ${o?.rawMinutes} 分钟 → 按上限 ${o?.minutes} 分钟补发 ${o?.gold} 金币 / ${o?.kills} 击杀（capped=${o?.capped}）`,
+        );
+        console.log(`[desk] 进度还原：第 ${s?.wave} 波 / 金币 ${s?.gold}（存档里 500 + 补发 ${expectGold}）/ 累计击杀 ${s?.kills}（120 + 180）`);
+        console.log(`[desk] 自动落盘：persist 返回 ${wrote}，存档里现在 金币 ${after?.gold} 波 ${after?.wave}，带速率=${after?.hasRate}`);
+        console.log(
+          `[desk] 离线收益自检：${ok ? "通过" : "失败"}（日志金额对=${logOk} 金币到账=${(s?.gold ?? 0) >= 500 + expectGold} 击杀到账=${(s?.kills ?? 0) >= 300} 进度还原=${(s?.wave ?? 0) >= 4} 落盘=${wrote === true && after?.gold === s?.gold} 带速率=${after?.hasRate === true} 零报错=${s?.errors === 0}）`,
+        );
+        if (SHOT) {
+          const img = await win.webContents.capturePage();
+          fs.writeFileSync(SHOT, img.toPNG());
+          console.log(`[desk] 已截图（「欢迎回来」那一帧）→ ${SHOT}`);
+        }
+        app.exit(ok ? 0 : 1);
+      } catch (err) {
+        console.error("[desk] 离线收益自检出错：", err.message);
         app.exit(1);
       }
     });
@@ -818,6 +955,12 @@ function createWindow() {
         const g = window.__game;
         if (!g) return null;
         const units = g.world.entities.filter((e) => e.unit);
+        const cv = document.querySelector("canvas");
+        const viewW = cv ? cv.clientWidth : 0;
+        const camX = viewW ? (g.scene.bounds.w - viewW) / 2 : 0;
+        const frac = (x) => (viewW ? (x - camX) / viewW : null);
+        const me = units.find((e) => e.unit.team === "hero" && !e.dead);
+        const foes = units.filter((e) => e.unit.team === "enemy" && e.unit.hp > 0);
         return {
           t: Math.round(g.loop.time * 10) / 10,
           wave: g.stats.wave,
@@ -836,10 +979,13 @@ function createWindow() {
           gold: g.stats.gold,
           misses: g.stats.misses,
           lastDrop: g.stats.lastDrop ? g.stats.lastDrop.text : null,
+          heroFrac: me ? frac(me.pos.x) : null,
+          enemyFracMax: foes.length ? Math.max(...foes.map((e) => frac(e.pos.x))) : null,
+          enemyFracMin: foes.length ? Math.min(...foes.map((e) => frac(e.pos.x))) : null,
           detail: units.slice(0, 6).map((e) => e.unit.team + "/" + e.unit.kind + " x" + Math.round(e.pos.x) + " hp" + e.unit.hp + " cd" + e.unit.cd.toFixed(2) + " r" + e.unit.range),
         };
       })()`;
-      const seen = { maxBolts: 0, maxFx: 0, maxEnemyUnits: 0, samples: 0, last: null, maxLootBag: 0 };
+      const seen = { maxBolts: 0, maxFx: 0, maxEnemyUnits: 0, samples: 0, last: null, maxLootBag: 0, maxEnemyFrac: 0, minHeroFrac: 1, maxHeroFrac: 0 };
       const until = Date.now() + COMBAT_CHECK;
       while (Date.now() < until) {
         try {
@@ -850,6 +996,11 @@ function createWindow() {
             seen.maxFx = Math.max(seen.maxFx, s.fx);
             seen.maxEnemyUnits = Math.max(seen.maxEnemyUnits, s.enemyUnits);
             seen.maxLootBag = Math.max(seen.maxLootBag, s.lootBag);
+            if (typeof s.enemyFracMax === "number") seen.maxEnemyFrac = Math.max(seen.maxEnemyFrac, s.enemyFracMax);
+            if (typeof s.heroFrac === "number") {
+              seen.minHeroFrac = Math.min(seen.minHeroFrac, s.heroFrac);
+              seen.maxHeroFrac = Math.max(seen.maxHeroFrac, s.heroFrac);
+            }
             seen.last = s;
           }
         } catch (err) {
@@ -864,6 +1015,13 @@ function createWindow() {
       console.log(`[desk] 峰值：弹道 ${seen.maxBolts} 个，特效 ${seen.maxFx} 个，场上敌单位 ${seen.maxEnemyUnits}，战利品袋 ${seen.maxLootBag}`);
       // 掉落必须真的发生（挂机的正反馈），且全程零报错
       const dropped = s ? s.loot.normal + s.loot.magic + s.loot.rare + s.loot.unique : 0;
+      // 构图（固定舞台）：英雄钉在画面中间附近、怪必须真的从右边走进来
+      const heroCentered = seen.minHeroFrac >= 0.42 && seen.maxHeroFrac <= 0.48;
+      const foesFromRight = seen.maxEnemyFrac > 0.85;
+      console.log(
+        `[desk] 构图：英雄在画面 ${(seen.minHeroFrac * 100).toFixed(1)}%~${(seen.maxHeroFrac * 100).toFixed(1)}%（期望 45%±3）` +
+          ` / 怪最靠右到 ${(seen.maxEnemyFrac * 100).toFixed(1)}%（期望 >85%，即从右边缘进场）`,
+      );
       const ok =
         !!s &&
         s.kills >= 3 &&
@@ -873,9 +1031,13 @@ function createWindow() {
         seen.maxEnemyUnits >= 2 &&
         seen.maxLootBag >= 1 &&
         s.gold > 0 &&
-        s.errors === 0;
+        s.errors === 0 &&
+        heroCentered &&
+        foesFromRight;
       console.log(`[desk] 结算：击杀 ${s?.kills} / 掉落 ${dropped} 件 / 金币 ${s?.gold} / 关卡 ${s?.stage}`);
-      console.log(ok ? "[desk] 战斗自检：通过" : "[desk] 战斗自检：失败");
+      console.log(
+        `[desk] 战斗自检：${ok ? "通过" : "失败"}（英雄居中=${heroCentered} 怪从右侧进场=${foesFromRight}）`,
+      );
       app.exit(ok ? 0 : 1);
     });
   }
@@ -948,6 +1110,12 @@ ipcMain.handle("desk:reset", () => resetToBottom());
 ipcMain.handle("desk:get-state", () => state());
 // 置顶开关：界面点/快捷键/自检都走 setOnTop，保证「状态 + 落盘 + 广播」一起发生
 ipcMain.handle("desk:set-on-top", (_e, on) => setOnTop(typeof on === "boolean" ? on : !(keeper && keeper.enabled()), "界面"));
+// 关闭桌面条：右上角按钮走这里。刻意复用 Ctrl+Alt+Q 那一条路（app.quit()），
+// 不要在界面侧再写一套「关窗口」的逻辑 —— 两条路会让「退出前要保存什么」这类规则分裂。
+ipcMain.handle("desk:close", () => {
+  app.quit();
+  return true;
+});
 
 app.whenReady().then(() => {
   createWindow();

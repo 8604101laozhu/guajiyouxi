@@ -262,3 +262,46 @@ describe("波次", () => {
     expect(state.wave).toBe(2);
   });
 });
+
+describe("固定舞台：英雄守桩，怪从右边走过来", () => {
+  it("holdPost：够不着也不追（怪自己走过来）—— 交战点才不会漂", () => {
+    const world = new World();
+    const h = hero(world, 1150, "melee");
+    const e = enemy(world, 2500, "melee", { speed: 60, hp: 9999 });
+    updateUnits(world, 1, { ...ctx, holdPost: true });
+    expect(h.pos.x).toBe(1150); // 英雄一动不动
+    expect(e.pos.x).toBeLessThan(2500); // 怪在朝英雄走
+    expect(e.unit!.facing).toBe(-1); // 面朝左（从右边走进来的样子）
+  });
+
+  it("holdPost：场上没敌人也不推图（固定舞台不往右漂）", () => {
+    const world = new World();
+    const h = hero(world, 1150, "melee");
+    updateUnits(world, 1, { ...ctx, advance: true, holdPost: true });
+    expect(h.pos.x).toBe(1150);
+  });
+
+  it("没开 holdPost 时英雄照旧推图/追人（旧行为不变）", () => {
+    const world = new World();
+    const h = hero(world, 100, "melee");
+    updateUnits(world, 1, ctx); // ctx 里 advance: true
+    expect(h.pos.x).toBeGreaterThan(100);
+  });
+
+  it("怪在远处用赶路速度进场，进入交战距离后回自己的速度", () => {
+    const far = new World();
+    hero(far, 1150, "melee");
+    const eFar = enemy(far, 2450, "melee", { speed: 60, hp: 9999 }); // 距离 1300 → 赶路
+    updateUnits(far, 1, { ...ctx, holdPost: true });
+    const farStep = 2450 - eFar.pos.x;
+
+    const near = new World();
+    hero(near, 1150, "melee");
+    const eNear = enemy(near, 1400, "melee", { speed: 60, hp: 9999 }); // 距离 250 → 自己的速度
+    updateUnits(near, 1, { ...ctx, holdPost: true });
+    const nearStep = 1400 - eNear.pos.x;
+
+    expect(nearStep).toBeCloseTo(60, 5); // 60 px/s × 1s
+    expect(farStep).toBeGreaterThan(nearStep * 3); // 远处明显更快（不然挂机干等）
+  });
+});

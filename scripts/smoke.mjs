@@ -13,13 +13,25 @@
  * 每一项对应一个功能，功能改了就把对应项补上/改掉，别让矩阵烂掉。
  */
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { connect as netConnect } from "node:net";
+import { mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEV_URL = process.env.DESK_DEV_URL || "http://127.0.0.1:45231";
 const SHOT_DIR = "temp/smoke";
+/**
+ * 所有子进程共用一个「测试专用」的 userData 目录（通过 DESK_USER_DATA 注入）。
+ * 理由：自检会真的拖窗口、真的切置顶，共用用户的 userData 会把用户记住的位置/偏好写坏
+ * （真踩过：条被挪到两块屏之间的死区 x=2560，用户根本看不见它了）。
+ */
+const SMOKE_USER_DATA = path.join(
+  // 不能放仓库里（G 盘那个目录 Chromium 挪缓存会报「拒绝访问 0x5」，和 dsh 的 ACL 坑同源）
+  process.env.LOCALAPPDATA || process.env.TEMP || path.join(ROOT, "temp"),
+  "guajiyouxi-smoke",
+  "userdata",
+);
 const IS_WIN = process.platform === "win32";
 
 /**
@@ -118,6 +130,12 @@ const CHECKS = [
     expect: "置顶开关自检：通过",
   },
   {
+    name: "离线收益 + 存档（种一份 3 小时前的存档）",
+    cmd: `DESK_FRESH=0 DESK_OFFLINE_CHECK=1 DESK_FORGET_POS=1 npm run desk`,
+    timeout: 120,
+    expect: "离线收益自检：通过",
+  },
+  {
     name: "拖动控制器（真窗口）",
     cmd: "./node_modules/.bin/electron temp/drag-probe.cjs",
     timeout: 120,
@@ -150,14 +168,51 @@ async function reachable() {
   }
 }
 
+/**
+ * 端口有没有人在监听（TCP 能不能连上）。
+ * 用来区分两种「起不来」：端口空着 = 真没起（可以自己拉一个）；
+ * 端口在监听但 HTTP 不响应 = **卡死的 dev server**（真踩过：每项干等 120s 超时，
+ * 看起来像「代码挂了」，实际白等 7 分钟）。
+ */
+function portListening(url) {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(url);
+      const s = netConnect({ host: u.hostname, port: Number(u.port) || 80 });
+      const done = (v) => {
+        try {
+          s.destroy();
+        } catch {
+          /* ignore */
+        }
+        resolve(v);
+      };
+      s.setTimeout(1500);
+      s.once("connect", () => done(true));
+      s.once("error", () => done(false));
+      s.once("timeout", () => done(false));
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
 async function ensureServer() {
   if (!needServer) return true;
   if (await reachable()) {
     console.log(`dev 服务器已在 ${DEV_URL}`);
     return true;
   }
+  if (await portListening(DEV_URL)) {
+    console.error(`⚠ ${DEV_URL} 端口有人在监听，但 HTTP 不响应 —— 这是个「卡死」的 dev server。`);
+    console.error("  它会让每个窗口项都干等到超时（看起来像代码挂了）。先杀掉它再重跑：");
+    console.error(
+      '  powershell -NoProfile -Command "Get-NetTCPConnection -LocalPort 45231 | Select-Object -First 1 OwningProcess | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }"',
+    );
+    return false;
+  }
   console.log(`dev 服务器没起，自动开一个（${DEV_URL}）…`);
-  server = spawnSync("cmd", ["/c", "start", "/min", "guajiyouxi-smoke", "cmd", "/c", "node_modules\\.bin\\next.cmd dev --port 45231 --hostname 127.0.0.1"], {
+  server = spawnSync("cmd", ["/c", "start", "/min", '"guajiyouxi-smoke"', "cmd", "/c", "node_modules\\.bin\\next.cmd dev --port 45231 --hostname 127.0.0.1"], {
     cwd: ROOT,
     shell: false,
     stdio: "ignore",
@@ -181,16 +236,23 @@ mkdirSync(path.join(ROOT, SHOT_DIR), { recursive: true });
  * 拖动那种靠窗口位置的自检会假红。所以同一时刻只允许一次。
  */
 const LOCK = path.join(ROOT, SHOT_DIR, ".lock");
+/** 锁最多算多久有效：一次冒烟最长两分多钟，超过这么久必然是上次被杀留下的死锁 */
+const LOCK_STALE_MS = 20 * 60 * 1000;
 function acquireLock() {
   try {
-    const pid = Number(readFileSync(LOCK, "utf8").trim());
-    if (pid > 0) {
-      try {
-        process.kill(pid, 0); // 还活着 → 真有人在跑
-        console.error(`另一次冒烟还在跑（pid ${pid}）。Electron 缓存会互相打架，等它结束再来。`);
-        process.exit(2);
-      } catch {
-        /* 进程没了 → 陈旧锁，直接覆盖 */
+    const st = statSync(LOCK);
+    if (Date.now() - st.mtimeMs > LOCK_STALE_MS) {
+      console.log("发现一个 20 分钟以上的陈旧锁（上次可能是被杀掉的），直接接管。");
+    } else {
+      const pid = Number(readFileSync(LOCK, "utf8").trim());
+      if (pid > 0) {
+        try {
+          process.kill(pid, 0); // 还活着 → 真有人在跑
+          console.error(`另一次冒烟还在跑（pid ${pid}）。Electron 缓存会互相打架，等它结束再来。`);
+          process.exit(2);
+        } catch {
+          /* 进程没了 → 陈旧锁，直接覆盖 */
+        }
       }
     }
   } catch {
@@ -221,7 +283,7 @@ function runCheck(c, index, total) {
         cwd: ROOT,
         encoding: "utf8",
         timeout: c.timeout * 1000,
-        env: { ...process.env, FORCE_COLOR: "0" },
+        env: { ...process.env, FORCE_COLOR: "0", DESK_USER_DATA: SMOKE_USER_DATA, DESK_FRESH: "1" },
         maxBuffer: 32 * 1024 * 1024,
       })
     : spawnSync(c.cmd, {
@@ -229,7 +291,7 @@ function runCheck(c, index, total) {
         shell: true,
         encoding: "utf8",
         timeout: c.timeout * 1000,
-        env: { ...process.env, FORCE_COLOR: "0" },
+        env: { ...process.env, FORCE_COLOR: "0", DESK_USER_DATA: SMOKE_USER_DATA, DESK_FRESH: "1" },
         maxBuffer: 32 * 1024 * 1024,
       });
   const secs = (Date.now() - started) / 1000;
@@ -259,7 +321,10 @@ if (!hasBash) {
 }
 const serverOk = await ensureServer();
 if (!serverOk) {
-  console.log("窗口项会被跳过（dev 服务器不可用）");
+  // 不硬跑：窗口项会一个接一个干等到超时（真踩过，白等 7 分钟还看不出原因）。
+  // 直接退出，把怎么修写清楚。exit 钩子会释放互斥锁。
+  console.error("dev 服务器不可用 → 窗口项无法验证，直接退出（不硬跑到超时）。");
+  process.exit(2);
 }
 
 let i = 0;

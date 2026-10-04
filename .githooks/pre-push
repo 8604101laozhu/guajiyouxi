@@ -1,0 +1,6 @@
+#!/bin/sh
+# 推送闸门：已经进了历史、但属于第三方商业素材的文件，不许推上公开远端。
+# 这一层是兜底——pre-commit 被 --no-verify 绕过、或素材是闸门装上之前就提交的，
+# 都在这里拦下。
+# 详见 .githooks/README.md，实现见 scripts/thirdparty-asset-guard.mjs
+exec node "$(git rev-parse --show-toplevel)/scripts/thirdparty-asset-guard.mjs" --tracked

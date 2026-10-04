@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- Electron 主进程/预加载必须用 CommonJS */
 /**
  * 置顶开关：状态 + 保持器 + 偏好读写。
  *
@@ -10,6 +11,8 @@
  * Windows/Linux 会忽略它，写进去只为跨平台一致。
  * 参考：electron#10078（全屏应用之上的限制）、electron#5124（alwaysOnTop 与透明窗口的交互）。
  */
+const { readState, mergeState } = require("./window-state.cjs");
+
 const TOP_LEVEL = "screen-saver";
 /** 心跳间隔：太密是浪费，太疏会明显被顶下去 */
 const CHECK_MS = 2000;
@@ -76,26 +79,13 @@ function createOnTopKeeper({ getWindow, intervalMs = CHECK_MS, setIntervalFn = s
 
 /** 从窗口状态文件里读「是否置顶」，没存过或坏掉就返回默认值 */
 function readOnTopPref(file, fsImpl, fallback = true) {
-  try {
-    const raw = fsImpl.readFileSync(file, "utf8");
-    const obj = JSON.parse(raw);
-    return typeof obj.alwaysOnTop === "boolean" ? obj.alwaysOnTop : fallback;
-  } catch {
-    return fallback;
-  }
+  const obj = readState(file, fsImpl);
+  return typeof obj.alwaysOnTop === "boolean" ? obj.alwaysOnTop : fallback;
 }
 
-/** 把「是否置顶」并进窗口状态文件（保留位置等其它字段） */
+/** 把「是否置顶」并进窗口状态文件（读-改-写：保留位置等其它字段） */
 function writeOnTopPref(file, fsImpl, on) {
-  let obj = {};
-  try {
-    obj = JSON.parse(fsImpl.readFileSync(file, "utf8")) || {};
-  } catch {
-    obj = {};
-  }
-  obj.alwaysOnTop = !!on;
-  fsImpl.writeFileSync(file, JSON.stringify(obj, null, 2));
-  return obj;
+  return mergeState(file, { alwaysOnTop: !!on }, fsImpl);
 }
 
-module.exports = { createOnTopKeeper, readOnTopPref, writeOnTopPref, TOP_LEVEL, CHECK_MS };
+module.exports = { createOnTopKeeper, readOnTopPref, writeOnTopPref, readState, mergeState, TOP_LEVEL, CHECK_MS };

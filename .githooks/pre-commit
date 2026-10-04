@@ -1,0 +1,6 @@
+#!/bin/sh
+# 提交闸门：暂存区里出现第三方商业素材就拒绝提交。
+# 为什么放在这儿：npm run drop:push 会自动 git add → commit → push，
+# 这条自动路没人逐张看图，所以闸门必须在 git 层拦。
+# 详见 .githooks/README.md，实现见 scripts/thirdparty-asset-guard.mjs
+exec node "$(git rev-parse --show-toplevel)/scripts/thirdparty-asset-guard.mjs" --staged

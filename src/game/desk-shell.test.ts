@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const { computeDragPos, clampToWorkArea, bottomRestingPos } = require("../../electron/drag-math.cjs");
 const { createDragController } = require("../../electron/drag.cjs");
-const { createOnTopKeeper, readOnTopPref, writeOnTopPref } = require("../../electron/ontop.cjs");
+const { createOnTopKeeper, readOnTopPref, writeOnTopPref, readState, mergeState } = require("../../electron/ontop.cjs");
 
 const work = { x: 0, y: 0, width: 1920, height: 1080 };
 
@@ -263,5 +263,17 @@ describe("置顶偏好的读写", () => {
     const fs = fakeFs({ "f.json": '{"x":100,"y":1132}' });
     writeOnTopPref("f.json", fs, false);
     expect(JSON.parse(fs.files["f.json"])).toEqual({ x: 100, y: 1132, alwaysOnTop: false });
+  });
+
+  it("反过来也一样：存位置不能把 alwaysOnTop 抹掉（真踩过，条被写没了记忆）", () => {
+    const fs = fakeFs({ "f.json": '{"x":0,"y":1132,"alwaysOnTop":false}' });
+    mergeState("f.json", { x: 300, y: 800 }, fs);
+    expect(JSON.parse(fs.files["f.json"])).toEqual({ x: 300, y: 800, alwaysOnTop: false });
+  });
+
+  it("文件坏掉/不存在时也能合并出正确内容（不抛）", () => {
+    const fs = fakeFs({ "f.json": "not json at all" });
+    expect(mergeState("f.json", { x: 1, y: 2 }, fs)).toEqual({ x: 1, y: 2 });
+    expect(readState("f.json", fakeFs())).toEqual({});
   });
 });

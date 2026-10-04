@@ -8,6 +8,8 @@ import { useEffect, useRef } from "react";
 import { boot, type GameHandle } from "@/game/main";
 import { useLongPressDrag } from "./use-long-press-drag";
 import { OnTopChip } from "./on-top-chip";
+import { CloseChip } from "./close-chip";
+import { MuteChip } from "./mute-chip";
 
 export default function DeskPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,8 +40,11 @@ export default function DeskPage() {
     /** 首次交互解锁音频的监听（卸载时摘掉） */
     let detachUnlock: (() => void) | null = null;
     // 支持 ?scene=/scenes/xxx.json 换场景，方便对比不同布局与自检
-    const sceneUrl = new URLSearchParams(window.location.search).get("scene") ?? undefined;
-    boot(canvas, sceneUrl)
+    // ?fresh=1 忽略存档（自检用：每个探针都要从干净状态开始）
+    const params = new URLSearchParams(window.location.search);
+    const sceneUrl = params.get("scene") ?? undefined;
+    const fresh = params.get("fresh") === "1";
+    boot(canvas, sceneUrl, { fresh })
       .then((g) => {
         if (disposed) {
           g.stop();
@@ -96,11 +101,14 @@ export default function DeskPage() {
         </div>
       )}
       {drag.clickThrough && !drag.dragging && (
-        <div className="pointer-events-none fixed right-2 top-2 rounded border border-[#6a5428] bg-black/60 px-2 py-0.5 text-[10px] tracking-wider text-[#8a7a5a]">
+        <div className="pointer-events-none fixed right-2 top-20 rounded border border-[#6a5428] bg-black/60 px-2 py-0.5 text-[10px] tracking-wider text-[#8a7a5a]">
           点击穿透中 · Ctrl+Alt+D 关
         </div>
       )}
+      {/* 右上角一列（自上而下）：关闭 top-2 → 置顶 top-8 → 音量 top-14 → 穿透提示 top-20，互不遮挡 */}
+      <CloseChip />
       <OnTopChip />
+      <MuteChip />
     </>
   );
 }

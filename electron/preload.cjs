@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld("deskBar", {
   getState: () => ipcRenderer.invoke("desk:get-state"),
   /** 置顶开关（开关量）：不传就是翻转；返回切换后的状态 */
   setOnTop: (on) => ipcRenderer.invoke("desk:set-on-top", on),
+  /** 关闭桌面条：和快捷键 Ctrl+Alt+Q 走同一条路（主进程 app.quit()），界面不另写一套退出逻辑 */
+  close: () => ipcRenderer.invoke("desk:close"),
   /** 订阅窗口状态（拖动中 / 点击穿透 / 置顶），返回取消订阅函数 */
   onState: (cb) => {
     const handler = (_event, s) => cb(s);

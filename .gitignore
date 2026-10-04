@@ -47,3 +47,8 @@ drop.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 第三方商业素材隔离区（本机拆包素材的家在仓库外，这里只是"别放进工程"的兜底：
+# 万一有人把素材丢进工程目录，git add -A 也不会收进去）
+/rip-import/
+/public/sprites/_thirdparty-raw/

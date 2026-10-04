@@ -10,8 +10,8 @@
     { "id": "hero_back", "model": "hero_mage", "x": 250, "y": 206, "layer": "entity", "params": { "unit": 1, "kind": 1, "hp": 150, "damage": 16 } },
 
     { "id": "rock_1", "model": "rock", "x": 120, "y": 206, "layer": "ground", "collision": true, "params": { "variant": 0 } },
-    { "id": "rock_2", "model": "rock", "x": 2430, "y": 206, "layer": "ground", "collision": true, "params": { "variant": 1 } },
-    { "id": "rock_3", "model": "rock", "x": 2500, "y": 206, "layer": "ground", "collision": true, "params": { "variant": 2 } },
+    { "id": "rock_2", "model": "rock", "x": 640, "y": 206, "layer": "ground", "collision": true, "params": { "variant": 1 } },
+    { "id": "rock_3", "model": "rock", "x": 780, "y": 206, "layer": "ground", "collision": true, "params": { "variant": 2 } },
 
     { "id": "slime_a", "model": "slime", "x": 1100, "y": 206, "layer": "ground", "params": { "color": 0, "big": 0 } },
     { "id": "slime_b", "model": "slime", "x": 1820, "y": 206, "layer": "ground", "params": { "color": 2, "big": 0 } }

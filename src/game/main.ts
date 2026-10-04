@@ -22,6 +22,10 @@ import { spawnDrop, updateDrops } from "./loot";
 import { createWaveState, noteKill, updateWaves, type WaveState } from "./waves";
 import { createFloaters, type Floaters } from "./floaters";
 import { createAudio, type AudioHandle } from "./audio";
+import { enemySpawnX, heroPostX } from "./stage";
+import { SAVE_DEFAULTS, createSave, deserialize, serialize } from "./save";
+import { computeOffline, formatDuration, type OfflineResult } from "./offline";
+import { loadRaw, pickStorage, saveRaw } from "./save-store";
 import { createPotions, potionsLeft, updatePotions, type PotionState } from "./potions";
 import {
   heroStats,
@@ -58,6 +62,13 @@ export type GameHandle = {
   floaters: Floaters;
   audio: AudioHandle;
   potions: PotionState;
+  /**
+   * 本次开机的离线结算结果（没存档 / 不值得报就是 null）。
+   * 自检（DESK_OFFLINE_CHECK）读它验「补发金额 / 是否被上限截断」。
+   */
+  offline: OfflineResult | null;
+  /** 立刻把进度落盘，返回是否写成功（自检 / 退出时用） */
+  persist: () => boolean;
   /** 背景不透明度（天空 / 地面两个独立旋钮），自检与调试用 */
   get bgAlpha(): number;
   get groundAlpha(): number;
@@ -120,7 +131,25 @@ function dropTierOf(quality: Item["quality"]): DropQuality {
   return Math.max(0, Math.min(3, QUALITY_ORDER.indexOf(quality))) as DropQuality;
 }
 
-export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapter-1.json"): Promise<GameHandle> {
+/** 存档落盘间隔（秒）：同类项目都是「定时 + 页面退出/隐藏」两条腿 */
+export const AUTOSAVE_SECONDS = 10;
+
+/**
+ * 「欢迎回来」这条提示在本页面最近一次的内容（30 秒内有效）。
+ * 为什么需要它：开发模式下 React 会把 boot 跑两次 —— 第二次读到的存档是第一次 stop() 写回去的，
+ * 离线时长≈0，于是第一次刚弹出来的提示会被第二次的空状态**直接擦掉**（用户根本看不到）。
+ * 奖励只在真正算出来的那一次发（不会重复给），这里只管「别把提示擦掉」。
+ */
+let pendingBanner: { text: string; gold: number; at: number } | null = null;
+
+/**
+ * @param opts.fresh 忽略上次的存档（自检/冒烟用：保证每个探针从干净状态开始）
+ */
+export async function boot(
+  canvas: HTMLCanvasElement,
+  sceneUrl = "/scenes/chapter-1.json",
+  opts: { fresh?: boolean } = {},
+): Promise<GameHandle> {
   const ledger = new ErrorLedger();
   const world = new World();
 
@@ -163,6 +192,32 @@ export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapte
     if (!hero) hero = e;
   }
   if (!hero) ledger.add("scene.json", sceneUrl, "场景里没有 params.unit=1 的英雄，挂机不会发生");
+
+  // ---- 固定舞台（见 src/game/stage.ts）----
+  // 英雄钉在画面偏中间的位置、不再推图；怪从画面右侧走进来。于是交战点永远在画面中间，
+  // 不会像推图那样一路往右漂。以场景里第一个英雄为桩，其余人保持和它的相对间距（法师自然落在后面）。
+  const stageHeroes = world.entities.filter((e) => e.unit?.team === "hero");
+  const stageAnchorX = hero ? hero.pos.x : 0;
+  const stageOffsets = stageHeroes.map((e) => e.pos.x - stageAnchorX);
+
+  /** 当前视口宽（CSS 像素）—— 桩位和刷怪点都要按屏幕算，不能写死世界坐标 */
+  function viewportW(): number {
+    const dpr = canvas.width / (canvas.clientWidth || canvas.width || 1);
+    return canvas.width / dpr;
+  }
+
+  /** 把英雄摆回桩位：画面比例换算成世界坐标，换窗口宽度也钉在同一屏幕位置 */
+  function pinHeroes(viewW: number) {
+    if (!(viewW > 0)) return;
+    const postX = heroPostX(cameraX(viewW), viewW);
+    stageHeroes.forEach((e, i) => {
+      e.pos.x = postX + stageOffsets[i];
+    });
+  }
+
+  // 开机就先钉一次：主循环的第一帧之前，英雄还在场景 json 里的坐标上（340 → 13% 处），
+  // 那会在画面最左边闪一下再跳到中间。
+  pinHeroes(viewportW());
 
   // 4) 主循环：自动战斗 + 刷怪 + 掉落结算
   const renderer = new Renderer();
@@ -207,13 +262,105 @@ export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapte
   const lootCount: Record<Quality, number> = { normal: 0, magic: 0, rare: 0, unique: 0 };
   let lastDrop: { text: string; color: string } | null = null;
 
+  // ---- 存档 + 离线收益 ----
+  // 开局读一次：进度（关卡/金币/战利品/药水）要留住，顺便结算「离开这段时间」的收益。
+  // ?fresh=1 是「干净会话」：忽略存档 **且不落盘**（自检用 —— 探针不该改持久状态，
+  // 否则上一项留下的存档会污染下一项，甚至把种好的存档冲掉）。
+  const canSave = !opts.fresh;
+  const store = pickStorage();
+  const loaded = opts.fresh ? { ok: false as const, reason: "empty" as const, data: null } : deserialize(loadRaw(store));
+  let offline: OfflineResult | null = null;
+  /** 上次会话实测的收益速率（存档里带着），离线收益按它结算 */
+  let rateGoldPerMin = 0;
+  let rateKillsPerMin = 0;
+
+  if (loaded.ok && loaded.data) {
+    const d = loaded.data;
+    // 关卡进度：波次和累计击杀留住（其余计时器保持全新状态，让它正常开下一波）
+    waves.wave = Math.max(1, d.wave);
+    waves.kills = d.kills;
+    gold = d.gold;
+    missTotal = d.missTotal;
+    lastDrop = d.lastDrop;
+    // 战利品袋：存档模块故意不认识 d2 的 Item（它只保证是对象数组），这里回铸成 Item[]
+    lootBag.push(...(d.items as Item[]));
+    for (const q of Object.keys(lootCount) as Quality[]) {
+      if (typeof d.lootCount[q] === "number") lootCount[q] = d.lootCount[q];
+    }
+    // 药水槽：逐个对齐（存档里的槽位更少就保持默认）
+    d.potions.forEach((n, i) => {
+      if (i < potions.slots.length) potions.slots[i] = n;
+    });
+    rateGoldPerMin = d.goldPerMinute;
+    rateKillsPerMin = d.killsPerMinute;
+    offline = computeOffline({
+      savedAtMs: d.now,
+      nowMs: Date.now(),
+      goldPerMinute: rateGoldPerMin,
+      killsPerMinute: rateKillsPerMin,
+      capMinutes: d.offlineCapMinutes,
+    });
+    if (offline.worthShowing) {
+      gold += offline.gold;
+      waves.kills += offline.kills;
+      const line =
+        `离开 ${formatDuration(offline.rawMinutes)}` +
+        (offline.capped ? `（按上限 ${formatDuration(offline.minutes)} 结算）` : "") +
+        ` → +${offline.gold} 金币`;
+      pendingBanner = { text: line, gold: offline.gold, at: Date.now() };
+      console.info(
+        `[game] 离线结算：离开 ${formatDuration(offline.rawMinutes)}` +
+          (offline.capped ? `（上限 ${formatDuration(offline.minutes)}）` : "") +
+          ` → +${offline.gold} 金币 / +${offline.kills} 击杀`,
+      );
+    }
+  } else if (loaded.reason !== "empty") {
+    // 存档读不出来只能从头开始，但要说清楚（静默归零最讨厌）
+    console.warn(`[game] 存档没读出来（${loaded.reason}），本次从头开始`);
+  }
+
+  /** 把当前进度打成存档文本（含「上次会话实测速率」，下次开机算离线收益用） */
+  function currentSave(): string {
+    return serialize(
+      createSave({
+        now: Date.now(),
+        wave: waves.wave,
+        kills: waves.kills,
+        gold,
+        missTotal,
+        items: lootBag,
+        lootCount,
+        potions: potions.slots,
+        lastDrop,
+        offlineCapMinutes: SAVE_DEFAULTS.offlineCapMinutes,
+        // 速率也存下来：下次开机算离线收益就靠它
+        goldPerMinute: rateGoldPerMin,
+        killsPerMinute: rateKillsPerMin,
+      }),
+    );
+  }
+
+  /**
+   * 落盘。每 10 秒一次 + 页面隐藏/关闭时各一次（同类项目的通行做法）。
+   * `fresh` 会话（自检/冒烟）**完全不许写盘**：探针改动了持久状态，下一项就不干净了
+   * —— 这条是真踩出来的（种好的存档被页面的 pagehide 存档冲掉，自检读到的是上一项留下的旧档）。
+   */
+  function persist(): boolean {
+    if (!canSave) return false;
+    rateGoldPerMin = stats.killsPerMin > 0 ? (stats.gold / Math.max(1, loop.time)) * 60 : rateGoldPerMin;
+    rateKillsPerMin = stats.killsPerMin > 0 ? stats.killsPerMin : rateKillsPerMin;
+    return saveRaw(currentSave(), store);
+  }
+
   /** 一波 = 一个关卡：怪的数值来自 d2 的关卡表，进场点由这里决定 */
   function spawnEnemy(index: number, total: number) {
     const spec = enemyFromMonster(monsterForWave(Math.max(1, waves.wave)), index, total);
     const model: ModelDef = models.get("imp") ?? placeholderModel("imp", "missing from registry");
-    // 进场点：英雄前方一点（而不是屏幕最右边）—— 2560 宽的条上从最右边走过来要 20 多秒，挂机会「干等」
-    const heroX = hero && !hero.dead ? hero.pos.x : 200;
-    const x = Math.min(scene.bounds.w - 24, Math.max(80, heroX + 380 + (index % 4) * 70));
+    // 进场点：**画面右边缘**（固定舞台 —— 怪从右边走进来，交战点始终在画面中间）。
+    // 注意：d2 给的移动速度很慢（远程 30 / 近战 52~70 px/s），全靠 ai.ts 的「赶路速度」把这段路
+    // 压到 ~6 秒，否则挂机就是干等。
+    const viewW = viewportW();
+    const x = enemySpawnX({ camX: cameraX(viewW), viewW, boundsW: scene.bounds.w, index });
     world.spawn({
       id: `enemy_${++spawnSeq}`,
       model,
@@ -293,10 +440,13 @@ export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapte
   const loop = createLoop({
     update(dt) {
       // a) 单位行为：索敌 → 走位 → 攻击（命中/伤害走 d2 的掷骰）
+      //    固定舞台：英雄先摆回桩位；AI 里的 holdPost 保证它不推图也不追人，怪会自己走过来
+      pinHeroes(viewportW());
       const ai = updateUnits(world, dt, {
         bounds: scene.bounds,
         models,
-        advance: true,
+        advance: false,
+        holdPost: true,
         rolls: {
           hero: (target) =>
             heroStrike(rng, character, { defense: target.unit?.defense ?? 0, mlvl: target.unit?.mlvl ?? 1 }),
@@ -436,6 +586,40 @@ export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapte
     { ...initialAlphas() },
   );
 
+  const autosave = canSave ? setInterval(() => persist(), AUTOSAVE_SECONDS * 1000) : null;
+  const persistOnHide = () => persist();
+  window.addEventListener("pagehide", persistOnHide);
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden") persist();
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+
+  // 欢迎回来：弹提示条 + 英雄头顶飘一笔金币（30 秒内重新 boot 也不丢，见 pendingBanner 的注释）
+  let remindTimer: ReturnType<typeof setInterval> | null = null;
+  const banner = pendingBanner && Date.now() - pendingBanner.at < 30_000 ? pendingBanner : null;
+  if (banner) {
+    const line = banner.text;
+    let left = 3;
+    const show = () => {
+      debugRef.state.lastAction = line;
+      debugRef.state.lastActionAt = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
+      if (--left <= 0 && remindTimer) clearInterval(remindTimer);
+    };
+    show();
+    remindTimer = setInterval(show, 2500);
+    // 顺带在英雄头上飘一笔金币（和游戏里其它金币反馈同一套）
+    if (hero) {
+      floaters.spawn({
+        x: hero.pos.x,
+        y: scene.bounds.groundY - 70,
+        color: "#ffd98a",
+        kind: "amount",
+        amount: banner.gold,
+        format: (n) => `＋${n} 金币`,
+      });
+    }
+  }
+
   const detachKeys = debugRef.attach();
 
   return {
@@ -451,6 +635,10 @@ export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapte
     floaters,
     audio,
     potions,
+    /** 本次开机的离线结算结果（没存档/不值得报就是 null）—— 自检读它 */
+    offline,
+    /** 立刻落盘（自检/退出时用） */
+    persist,
     get bgAlpha() {
       return debugRef.state.bgAlpha;
     },
@@ -461,6 +649,11 @@ export async function boot(canvas: HTMLCanvasElement, sceneUrl = "/scenes/chapte
     stop: () => {
       loop.stop();
       detachKeys();
+      if (autosave) clearInterval(autosave);
+      if (remindTimer) clearInterval(remindTimer);
+      window.removeEventListener("pagehide", persistOnHide);
+      document.removeEventListener("visibilitychange", onVisibility);
+      persist(); // 关条/热重载前存一次，别丢进度（fresh 会话里是空操作）
     },
   };
 }

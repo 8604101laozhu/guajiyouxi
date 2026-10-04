@@ -298,14 +298,6 @@ export function createAudio(opts: { ctxFactory?: () => AudioContext | null; volu
     peakTimers.length = 0;
   }
 
-  function resume(e: AudioEnv): void {
-    try {
-      void Promise.resolve(e.ctx.resume()).catch(() => {});
-    } catch {
-      /* resume 失败就当它还是 suspended，下一次 play 再试 */
-    }
-  }
-
   /**
    * 冷启动「预热」：音频设备从 resume 到真正出声要几十~150ms，这段时间里的第一声会被吃掉
    * （真机实测：第一次 play 峰值恒为 0，之后 drop/unique/coin 的 0.28~0.39 都正常）。
