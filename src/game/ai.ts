@@ -113,7 +113,16 @@ export function updateUnits(world: World, dt: number, ctx: AiContext): AiResult 
     const target = nearestOpponent(world, e);
 
     if (!target) {
-      // 没敌人：英雄继续推图，怪站着（怪的推进由刷怪器负责）；holdPost 的英雄守桩不动
+      // 没敌人：走回自己的桩位（固定舞台 —— 打完一波回中位，交战点不会一路往右漂）
+      if (unit.team === "hero" && unit.postX !== undefined) {
+        const home = unit.postX - e.pos.x;
+        if (Math.abs(home) > 2) {
+          unit.facing = home > 0 ? 1 : -1;
+          advance(world, e, unit.facing, unit.speed * dt, dt, boundsOr(ctx));
+        }
+        continue;
+      }
+      // 没桩位（旧行为）：英雄继续向右推图（holdPost 的老语义就是「不推图」）
       if (unit.team === "hero" && ctx.advance && !ctx.holdPost) {
         unit.facing = 1;
         advance(world, e, 1, unit.speed * 0.55 * dt, dt, boundsOr(ctx));
@@ -126,9 +135,14 @@ export function updateUnits(world: World, dt: number, ctx: AiContext): AiResult 
     const dist = Math.abs(dx);
     /** 守桩的英雄不追人（怪会自己走过来）—— 固定舞台的关键 */
     const holds = unit.team === "hero" && !!ctx.holdPost;
+    /**
+     * 对面是**远程**怪：它会在自己的射程上停下来打你，不会走过来。
+     * 守桩的英雄这时候必须走过去清掉，否则这一波永远清不完（下一波也就永远开不出来 —— 真踩过）。
+     */
+    const outranged = target.unit?.kind === "ranged";
 
     if (dist > unit.range) {
-      if (holds) continue;
+      if (holds && !outranged) continue;
       // 贴近到「够得着 + 一点余量」，别贴在对方脸上抖
       const gap = unit.range * 0.9;
       if (dist - gap > 2) {

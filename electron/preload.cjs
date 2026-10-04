@@ -15,7 +15,9 @@ contextBridge.exposeInMainWorld("deskBar", {
   getState: () => ipcRenderer.invoke("desk:get-state"),
   /** 置顶开关（开关量）：不传就是翻转；返回切换后的状态 */
   setOnTop: (on) => ipcRenderer.invoke("desk:set-on-top", on),
-  /** 关闭桌面条：和快捷键 Ctrl+Alt+Q 走同一条路（主进程 app.quit()），界面不另写一套退出逻辑 */
+  /** 收起桌面条（**不是退出**）：窗口藏起来，进程和托盘图标留着，从托盘菜单「显示游戏条」叫回来 */
+  hide: () => ipcRenderer.invoke("desk:hide"),
+  /** 真退出（和快捷键 Ctrl+Alt+Q 同一条路）。界面上的按钮已经不调它了，留给自检用 */
   close: () => ipcRenderer.invoke("desk:close"),
   /** 订阅窗口状态（拖动中 / 点击穿透 / 置顶），返回取消订阅函数 */
   onState: (cb) => {

@@ -72,20 +72,15 @@ function repoRoot() {
   return r.stdout.trim();
 }
 
-/** 暂存区条目：[{path, blobSha}]（-z 分隔，中文名安全） */
+/**
+ * 暂存区条目：只列"这次提交真正要写进去"的路径。
+ * 为什么不用 `git ls-files --cached`：那会列出**整个索引**（几百个已跟踪文件），
+ * 每次提交都全量扫一遍，既慢又让日志里那个数字骗人（不是本次暂存数）。
+ * 加/改/复制/改名都算，删除不算（没有内容可查）。
+ */
 function stagedEntries(root) {
-  const r = sh("git", ["ls-files", "-s", "-z", "--cached"], { cwd: root });
-  const out = [];
-  for (const rec of r.stdout.split("\0")) {
-    if (!rec) continue;
-    const tab = rec.indexOf("\t");
-    if (tab < 0) continue;
-    const meta = rec.slice(0, tab).split(/\s+/);   // <mode> <sha> <stage>
-    const filePath = rec.slice(tab + 1);
-    if (meta[0] === "160000") continue;            // submodule
-    out.push({ path: filePath, blobSha: meta[1] });
-  }
-  return out;
+  const r = sh("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"], { cwd: root });
+  return r.stdout.split("\0").filter(Boolean).map((p) => ({ path: p, blobSha: null }));
 }
 
 /** 已跟踪文件：[{path}] */

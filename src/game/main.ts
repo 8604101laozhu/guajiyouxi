@@ -206,18 +206,39 @@ export async function boot(
     return canvas.width / dpr;
   }
 
-  /** 把英雄摆回桩位：画面比例换算成世界坐标，换窗口宽度也钉在同一屏幕位置 */
-  function pinHeroes(viewW: number) {
-    if (!(viewW > 0)) return;
+  /** 每个英雄的桩位（世界坐标）：主英雄在画面 45%，其余保持和它的相对间距（法师落在后面） */
+  function heroPosts(viewW: number): number[] {
     const postX = heroPostX(cameraX(viewW), viewW);
+    return stageOffsets.map((o) => postX + o);
+  }
+
+  /**
+   * 开机把英雄摆到桩位上：主循环第一帧之前它们还在场景 json 的坐标上（340 = 画面 13% 处），
+   * 会闪一下再跳到中间。
+   */
+  function placeHeroes(viewW: number) {
+    if (!(viewW > 0)) return;
+    const posts = heroPosts(viewW);
     stageHeroes.forEach((e, i) => {
-      e.pos.x = postX + stageOffsets[i];
+      e.pos.x = posts[i];
+      if (e.unit) e.unit.postX = posts[i];
     });
   }
 
-  // 开机就先钉一次：主循环的第一帧之前，英雄还在场景 json 里的坐标上（340 → 13% 处），
-  // 那会在画面最左边闪一下再跳到中间。
-  pinHeroes(viewportW());
+  /**
+   * 每帧只更新「桩位坐标」，**不强行钉住英雄的位置** —— 走位交给 AI：
+   * ① 站在射程外打你的**远程怪**，英雄要自己走过去清掉（否则这一波清不完，下一波也就开不出来）；
+   * ② 场上没敌人时走回桩位，所以交战点仍然围绕画面中间，不会一路往右漂。
+   */
+  function updateHeroPosts(viewW: number) {
+    if (!(viewW > 0)) return;
+    const posts = heroPosts(viewW);
+    stageHeroes.forEach((e, i) => {
+      if (e.unit) e.unit.postX = posts[i];
+    });
+  }
+
+  placeHeroes(viewportW());
 
   // 4) 主循环：自动战斗 + 刷怪 + 掉落结算
   const renderer = new Renderer();
@@ -440,8 +461,9 @@ export async function boot(
   const loop = createLoop({
     update(dt) {
       // a) 单位行为：索敌 → 走位 → 攻击（命中/伤害走 d2 的掷骰）
-      //    固定舞台：英雄先摆回桩位；AI 里的 holdPost 保证它不推图也不追人，怪会自己走过来
-      pinHeroes(viewportW());
+      //    固定舞台：桩位先算好（英雄打完一波会走回去）；holdPost 让它不主动追近战怪，
+      //    但射程外打它的远程怪必须走过去清掉（见 ai.ts 的 outranged）
+      updateHeroPosts(viewportW());
       const ai = updateUnits(world, dt, {
         bounds: scene.bounds,
         models,

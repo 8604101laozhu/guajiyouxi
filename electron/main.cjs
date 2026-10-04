@@ -13,6 +13,7 @@ const path = require("node:path");
 const { createDragController } = require("./drag.cjs");
 const { clampToWorkArea, bottomRestingPos } = require("./drag-math.cjs");
 const { createOnTopKeeper, readOnTopPref, writeOnTopPref, mergeState } = require("./ontop.cjs");
+const { createTray, destroyTray, refreshTray } = require("./tray.cjs");
 
 /**
  * 桌面条是"没人点过"的窗口：Chromium 的自动播放策略会把 AudioContext 一直挂在 suspended，
@@ -1015,32 +1016,39 @@ function createWindow() {
       console.log(`[desk] 峰值：弹道 ${seen.maxBolts} 个，特效 ${seen.maxFx} 个，场上敌单位 ${seen.maxEnemyUnits}，战利品袋 ${seen.maxLootBag}`);
       // 掉落必须真的发生（挂机的正反馈），且全程零报错
       const dropped = s ? s.loot.normal + s.loot.magic + s.loot.rare + s.loot.unique : 0;
-      // 构图（固定舞台）：英雄钉在画面中间附近、怪必须真的从右边走进来
-      const heroCentered = seen.minHeroFrac >= 0.42 && seen.maxHeroFrac <= 0.48;
+      // 构图（固定舞台 + 追远程怪）：英雄围绕画面中间活动 —— 不会一路漂到右边，也不会被推到左边
+      const heroBounded = seen.minHeroFrac >= 0.42 && seen.maxHeroFrac <= 0.62;
+      const heroAtPost = seen.minHeroFrac <= 0.47; // 至少回到过桩位附近（打完一波会走回来）
       const foesFromRight = seen.maxEnemyFrac > 0.85;
       console.log(
-        `[desk] 构图：英雄在画面 ${(seen.minHeroFrac * 100).toFixed(1)}%~${(seen.maxHeroFrac * 100).toFixed(1)}%（期望 45%±3）` +
+        `[desk] 构图：英雄在画面 ${(seen.minHeroFrac * 100).toFixed(1)}%~${(seen.maxHeroFrac * 100).toFixed(1)}%（桩位 45%，追远程怪时会往右一段）` +
           ` / 怪最靠右到 ${(seen.maxEnemyFrac * 100).toFixed(1)}%（期望 >85%，即从右边缘进场）`,
       );
+      // 「打死后才放下一波」：波次要真的推进（第 1 波清完才会开第 2 波），卡住就不会到 2
+      console.log(`[desk] 波次推进：${s?.wave} 波（期望 ≥2：一波清完才会开下一波）`);
       const ok =
         !!s &&
         s.kills >= 3 &&
-        s.wave >= 1 &&
+        s.wave >= 2 &&
         seen.maxBolts >= 1 &&
         seen.maxFx >= 1 &&
         seen.maxEnemyUnits >= 2 &&
         seen.maxLootBag >= 1 &&
         s.gold > 0 &&
         s.errors === 0 &&
-        heroCentered &&
+        heroBounded &&
+        heroAtPost &&
         foesFromRight;
       console.log(`[desk] 结算：击杀 ${s?.kills} / 掉落 ${dropped} 件 / 金币 ${s?.gold} / 关卡 ${s?.stage}`);
       console.log(
-        `[desk] 战斗自检：${ok ? "通过" : "失败"}（英雄居中=${heroCentered} 怪从右侧进场=${foesFromRight}）`,
+        `[desk] 战斗自检：${ok ? "通过" : "失败"}（英雄活动范围合理=${heroBounded} 回到过桩位=${heroAtPost} 怪从右侧进场=${foesFromRight} 波次推进=${(s?.wave ?? 0) >= 2}）`,
       );
       app.exit(ok ? 0 : 1);
     });
   }
+  // 窗口显隐变化 → 托盘菜单第一项的文案要跟着在「显示游戏条 / 收起到托盘」之间切换
+  win.on("show", refreshTray);
+  win.on("hide", refreshTray);
   win.on("closed", () => {
     if (drag) drag.stopDrag();
     win = null;
@@ -1064,6 +1072,7 @@ function setOnTop(on, why = "界面") {
   const v = keeper ? keeper.set(on) : false;
   writeOnTopPref(posFile(), fs, v);
   sendState();
+  refreshTray(); // 托盘菜单里的「置顶」勾要跟着变 —— 条收起来时那是唯一入口
   console.log(`[desk] 置顶 ${v ? "开" : "关"}（${why}）`);
   return v;
 }
@@ -1091,6 +1100,33 @@ function resetToBottom() {
   return pos;
 }
 
+/** 托盘图标句柄（模块级：Electron 的 Tray 怕被 GC，必须留个引用） */
+let tray = null;
+
+/** 把条显示出来。窗口如果已经被**销毁**（不是隐藏），就重建一个。 */
+function showBar() {
+  if (!win || win.isDestroyed()) {
+    createWindow();
+    refreshTray();
+    console.log("[tray] 窗口已销毁，重建一个");
+    return;
+  }
+  win.show();
+  refreshTray();
+}
+
+/**
+ * 把条收起来（**不是退出**）。
+ * 收起来之后进程与托盘图标都还活着，右键「显示游戏条」就能叫回来。
+ * 真退出只有两条路：托盘菜单「退出」、Ctrl+Alt+Q —— 两条都走 app.quit()。
+ */
+function hideBar() {
+  if (!win || win.isDestroyed()) return true;
+  win.hide();
+  refreshTray();
+  return true;
+}
+
 // ---- 渲染进程要的接口（长按拖动）----
 ipcMain.handle("desk:drag-start", () => {
   if (!win || win.isDestroyed()) return { ok: false };
@@ -1110,8 +1146,11 @@ ipcMain.handle("desk:reset", () => resetToBottom());
 ipcMain.handle("desk:get-state", () => state());
 // 置顶开关：界面点/快捷键/自检都走 setOnTop，保证「状态 + 落盘 + 广播」一起发生
 ipcMain.handle("desk:set-on-top", (_e, on) => setOnTop(typeof on === "boolean" ? on : !(keeper && keeper.enabled()), "界面"));
-// 关闭桌面条：右上角按钮走这里。刻意复用 Ctrl+Alt+Q 那一条路（app.quit()），
-// 不要在界面侧再写一套「关窗口」的逻辑 —— 两条路会让「退出前要保存什么」这类规则分裂。
+// **收起**桌面条：右上角按钮走这里（加了托盘之后，那个按钮的语义从「关闭」改成了「收起」）。
+// 刻意不在这里 app.quit() —— 收起来只是藏窗口，进程和托盘图标都得留着，否则托盘就成了摆设。
+// 真退出只有两条路：托盘菜单「退出」、Ctrl+Alt+Q。
+ipcMain.handle("desk:hide", () => hideBar());
+// 真退出的 IPC 入口（界面上的按钮已经不调它了，留着给自检/将来的快捷键用）
 ipcMain.handle("desk:close", () => {
   app.quit();
   return true;
@@ -1119,6 +1158,18 @@ ipcMain.handle("desk:close", () => {
 
 app.whenReady().then(() => {
   createWindow();
+
+  // 托盘图标：条收起来之后唯一的入口。必须在 createWindow 之后建 ——
+  // 菜单第一项要按「窗口可不可见」决定写「显示游戏条」还是「收起到托盘」。
+  tray = createTray({
+    iconPath: path.join(__dirname, "assets", "tray.ico"),
+    getWindow: () => win,
+    onQuit: () => app.quit(),
+    onShow: showBar,
+    onHide: hideBar,
+    isOnTop: () => !!(keeper && keeper.enabled()),
+    toggleOnTop: () => setOnTop(!(keeper && keeper.enabled()), "托盘"),
+  });
 
   globalShortcut.register("Control+Alt+D", () => setClickThrough(!clickThrough));
   globalShortcut.register("Control+Alt+T", () => setOnTop(!(keeper && keeper.enabled()), "快捷键"));
@@ -1131,5 +1182,13 @@ app.whenReady().then(() => {
   });
 });
 
-app.on("will-quit", () => globalShortcut.unregisterAll());
-app.on("window-all-closed", () => app.quit());
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
+  // 不 destroy 的话，隐藏区会残留一个点不动的死图标
+  destroyTray();
+});
+// 有托盘在，窗口全关**也不能退出** —— 否则托盘跟着没了，就再没有入口了。
+// 真退出只有两条路：托盘菜单「退出」、Ctrl+Alt+Q（都走 app.quit()）。
+app.on("window-all-closed", () => {
+  console.log("[tray] 窗口都没了，托盘常驻（要退请用托盘菜单「退出」或 Ctrl+Alt+Q）");
+});

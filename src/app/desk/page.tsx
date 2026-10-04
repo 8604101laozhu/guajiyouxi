@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 import { boot, type GameHandle } from "@/game/main";
 import { useLongPressDrag } from "./use-long-press-drag";
 import { OnTopChip } from "./on-top-chip";
-import { CloseChip } from "./close-chip";
+import { HideChip } from "./hide-chip";
 import { MuteChip } from "./mute-chip";
 
 export default function DeskPage() {
@@ -105,8 +105,8 @@ export default function DeskPage() {
           点击穿透中 · Ctrl+Alt+D 关
         </div>
       )}
-      {/* 右上角一列（自上而下）：关闭 top-2 → 置顶 top-8 → 音量 top-14 → 穿透提示 top-20，互不遮挡 */}
-      <CloseChip />
+      {/* 右上角一列（自上而下）：收起 top-2 → 置顶 top-8 → 音量 top-14 → 穿透提示 top-20，互不遮挡 */}
+      <HideChip />
       <OnTopChip />
       <MuteChip />
     </>

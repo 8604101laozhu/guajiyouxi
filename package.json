@@ -13,6 +13,7 @@
     "drop:watch": "node scripts/drop.mjs --watch",
     "drop:push": "node scripts/drop.mjs --push",
     "import:char": "node scripts/import-char.mjs",
+    "make:tray-icon": "electron scripts/make-tray-icon.cjs",
     "guard:assets": "node scripts/thirdparty-asset-guard.mjs --tracked",
     "desk": "electron electron/main.cjs",
     "selfhost:fonts": "node scripts/selfhost-fonts.mjs"

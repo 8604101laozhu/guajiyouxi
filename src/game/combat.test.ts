@@ -304,4 +304,41 @@ describe("固定舞台：英雄守桩，怪从右边走过来", () => {
     expect(nearStep).toBeCloseTo(60, 5); // 60 px/s × 1s
     expect(farStep).toBeGreaterThan(nearStep * 3); // 远处明显更快（不然挂机干等）
   });
+
+  it("远程怪站在射程外打你：英雄必须走过去清掉（不然这一波永远清不完、下一波开不出来）", () => {
+    const world = new World();
+    const h = hero(world, 1150, "melee");
+    const e = enemy(world, 1370, "ranged", { speed: 30, hp: 9999 }); // 距离 220 = 它的射程，它不会再靠近
+    updateUnits(world, 1, { ...ctx, holdPost: true });
+    expect(h.pos.x).toBeGreaterThan(1150); // 英雄主动走过去
+    expect(e.pos.x).toBe(1370); // 远程怪原地输出
+  });
+
+  it("近战怪走过来时英雄仍然守桩（固定舞台不漂）", () => {
+    const world = new World();
+    const h = hero(world, 1150, "melee");
+    enemy(world, 1600, "melee", { speed: 60, hp: 9999 });
+    for (let i = 0; i < 60; i++) updateUnits(world, 1 / 60, { ...ctx, holdPost: true });
+    expect(h.pos.x).toBe(1150); // 一步没动
+  });
+
+  it("打完一波：英雄走回自己的桩位（出去追远程怪之后也不会一路往右漂）", () => {
+    const world = new World();
+    const h = hero(world, 1450, "melee"); // 刚追完远程怪，站在右边
+    h.unit!.postX = 1150;
+    for (let i = 0; i < 400; i++) updateUnits(world, 1 / 60, { ...ctx, holdPost: true });
+    expect(Math.abs(h.pos.x - 1150)).toBeLessThan(3); // 回到桩位
+  });
+
+  it("「出去—回来」是可重复的：再来一只远程怪还是会走过去，清掉后再回位", () => {
+    const world = new World();
+    const h = hero(world, 1150, "melee");
+    h.unit!.postX = 1150;
+    const e1 = enemy(world, 1400, "ranged", { speed: 30, hp: 9999 });
+    for (let i = 0; i < 120; i++) updateUnits(world, 1 / 60, { ...ctx, holdPost: true });
+    expect(h.pos.x).toBeGreaterThan(1150); // 出去了
+    e1.dead = true; // 清掉
+    for (let i = 0; i < 400; i++) updateUnits(world, 1 / 60, { ...ctx, holdPost: true });
+    expect(Math.abs(h.pos.x - 1150)).toBeLessThan(3); // 回来了
+  });
 });
